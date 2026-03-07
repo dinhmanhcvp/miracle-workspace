@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Miracle - FLC Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        dark: { 900: '#121212', 800: '#1e1e1e', 700: '#2d2d2d', 600: '#3d3d3d' },
+                        brand: { 500: '#8b5cf6', 600: '#7c3aed' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        body { background-color: #121212; color: #f3f4f6; }
+        .glass-panel { background: rgba(30, 30, 30, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e1e1e; }
+        ::-webkit-scrollbar-thumb { background: #3d3d3d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4d4d4d; }
+        .input-dark { width: 100%; background-color: #121212; border: 1px solid #2d2d2d; border-radius: 0.5rem; padding: 0.625rem 1rem; color: #fff; transition: all 0.2s ease-in-out; }
+        .input-dark:focus { outline: none; border-color: #8b5cf6; box-shadow: 0 0 0 1px #8b5cf6; }
+        .label-dark { display: block; font-size: 0.875rem; font-weight: 500; color: #9ca3af; margin-bottom: 0.375rem; }
+        .btn-primary { padding: 0.625rem 1.25rem; border-radius: 0.5rem; background-color: #7c3aed; color: #fff; font-size: 0.875rem; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.2); transition: all 0.2s ease-in-out; }
+        .btn-primary:hover { background-color: #8b5cf6; cursor: pointer; }
+        .btn-secondary { padding: 0.625rem 1.25rem; border-radius: 0.5rem; background-color: #2d2d2d; border: 1px solid #3d3d3d; color: #fff; font-size: 0.875rem; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s ease-in-out; }
+        .btn-secondary:hover { background-color: #3d3d3d; cursor: pointer; }
+        .card { background-color: #1e1e1e; border: 1px solid #1e1e1e; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); }
+        
+        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; background-color: #121212; border-radius: 0.5rem; border: 1px solid #2d2d2d; overflow: hidden; }
+        .data-table th { background-color: #1a1a1a; color: #9ca3af; font-weight: 500; text-transform: uppercase; font-size: 0.75rem; padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #2d2d2d; }
+        .data-table td { padding: 0.75rem 1rem; color: #e5e7eb; font-size: 0.875rem; border-bottom: 1px solid #2d2d2d; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background-color: #1c1c1c; }
+
+        /* Prose customization for markdown rendering */
+        .prose, .prose p { color: #f3f4f6; }
+        .prose strong { color: #fff; }
+
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .toast { animation: slideIn 0.3s forwards; }
+    </style>
+</head>
+
+<body class="h-screen flex overflow-hidden selection:bg-brand-500 selection:text-white">
+
+    <!-- Sidebar -->
+    <aside class="w-72 border-r border-gray-800 bg-dark-900 flex flex-col z-10 glass-panel">
+        <div class="p-6 border-b border-gray-800">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-brand-500 to-pink-500 bg-clip-text text-transparent">The
+                Miracle</h1>
+            <p class="text-xs text-gray-400 mt-1"><i class="fas fa-bolt text-yellow-500 mr-1"></i> FLC Dashboard SOP</p>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-2" id="sidebar-nav">
+            <!-- Tabs injected by JS -->
+        </nav>
+        <div class="p-4 border-t border-gray-800 space-y-3">
+            <button onclick="openBookmarkletModal()"
+                class="w-full btn-secondary !bg-purple-900/30 hover:!bg-purple-900/50 text-purple-400 font-bold border border-purple-800">
+                <i class="fas fa-magic"></i> Magic Bookmarklet
+            </button>
+            <button onclick="window.open('miracle-guide.html', '_blank')"
+                class="w-full btn-primary !bg-blue-600 hover:!bg-blue-500">
+                <i class="fas fa-book-open"></i> Hướng dẫn sử dụng
+            </button>
+            <button onclick="openSettingsModal()" class="w-full btn-secondary">
+                <i class="fas fa-cog"></i> API Settings
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto bg-dark-900 relative">
+        <div class="max-w-4xl mx-auto p-8 pb-24" id="main-content">
+
+            <!-- STEP 1 -->
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 overflow-y-auto bg-dark-900 relative">
+                <div class="max-w-4xl mx-auto p-8 pb-24" id="main-content">
+
+                    <!-- STEP 1 -->
+                    <div id="step-1" class="tab-content active space-y-6">
+                        <div class="mb-8">
+                            <h2 class="text-3xl font-bold text-white mb-2">1. Scouting & Xin Giá</h2>
+                            <p class="text-gray-400">Scan KOLs, select database hints, and generate outreach messages.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <h3 class="text-lg font-semibold mb-4 text-white"><i
+                                    class="fas fa-shield-alt text-red-500 mr-2"></i>Blacklist Scanner</h3>
+                            <div>
+                                <label class="label-dark">KOL Name to Check</label>
+                                <input type="text" id="blacklist-input" class="input-dark"
+                                    placeholder="Enter KOL Name..." oninput="checkBlacklist()">
+                            </div>
+                            <div id="blacklist-warning"
+                                class="mt-3 hidden p-4 bg-red-900/40 border border-red-500/50 rounded-lg text-red-400 font-medium animate-pulse">
+                                <i class="fas fa-exclamation-triangle mr-2"></i> AGGRESSIVE WARNING: This KOL is
+                                strictly
+                                BLACKLISTED! DO NOT PROCEED!
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3 class="text-lg font-semibold mb-4 text-white"><i
+                                    class="fas fa-database text-blue-400 mr-2"></i>Sourcing DB Hint</h3>
+                            <div>
+                                <label class="label-dark">Industry</label>
+                                <select id="industry-select" class="input-dark" onchange="updateIndustryHint()">
+                                    <option value="">Select Industry...</option>
+                                    <option value="Momo/App">Momo / App</option>
+                                    <option value="Game">Game</option>
+                                    <option value="F&B">F&B</option>
+                                </select>
+                            </div>
+                            <div id="industry-hint"
+                                class="mt-3 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg text-blue-300 text-sm hidden">
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3 class="text-lg font-semibold mb-4 text-white"><i
+                                    class="fas fa-check-square text-green-400 mr-2"></i>FOCs (Mandatory)</h3>
+                            <div class="space-y-3" id="foc-container">
+                                <label class="flex items-center space-x-3 cursor-pointer group">
+                                    <input type="checkbox"
+                                        value="Miễn phí cung cấp mã Code Ads 7 ngày (Bắt buộc TikTok)"
+                                        class="w-5 h-5 rounded border-gray-600 text-brand-500 focus:ring-brand-500 bg-dark-900">
+                                    <span class="text-gray-300 group-hover:text-white transition-colors">Miễn phí cung
+                                        cấp mã
+                                        Code Ads 7 ngày (Bắt buộc TikTok)</span>
+                                </label>
+                                <label class="flex items-center space-x-3 cursor-pointer group">
+                                    <input type="checkbox" value="Miễn phí SDHA 1 tháng"
+                                        class="w-5 h-5 rounded border-gray-600 text-brand-500 focus:ring-brand-500 bg-dark-900">
+                                    <span class="text-gray-300 group-hover:text-white transition-colors">Miễn phí SDHA 1
+                                        tháng</span>
+                                </label>
+                                <label class="flex items-center space-x-3 cursor-pointer group">
+                                    <input type="checkbox" value="Miễn phí ghim bài 5 ngày"
+                                        class="w-5 h-5 rounded border-gray-600 text-brand-500 focus:ring-brand-500 bg-dark-900">
+                                    <span class="text-gray-300 group-hover:text-white transition-colors">Miễn phí ghim
+                                        bài 5
+                                        ngày</span>
+                                </label>
+                                <label class="flex items-center space-x-3 cursor-pointer group">
+                                    <input type="checkbox" value="Miễn phí cung cấp clip gốc không chữ"
+                                        class="w-5 h-5 rounded border-gray-600 text-brand-500 focus:ring-brand-500 bg-dark-900">
+                                    <span class="text-gray-300 group-hover:text-white transition-colors">Miễn phí cung
+                                        cấp clip
+                                        gốc không chữ</span>
+                                </label>
+                                <label class="flex items-center space-x-3 cursor-pointer group">
+                                    <input type="checkbox" value="Miễn phí Đăng lại (Reup) qua FB Reels/Threads"
+                                        class="w-5 h-5 rounded border-gray-600 text-brand-500 focus:ring-brand-500 bg-dark-900">
+                                    <span class="text-gray-300 group-hover:text-white transition-colors">Miễn phí Đăng
+                                        lại
+                                        (Reup) qua FB Reels/Threads</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3 class="text-lg font-semibold mb-4 text-white"><i
+                                    class="fas fa-magic text-yellow-400 mr-2"></i>Xin Giá AI Generator</h3>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div><label class="label-dark">SO Name</label><input type="text" id="so-name"
+                                        class="input-dark"></div>
+                                <div><label class="label-dark">Brand</label><input type="text" id="brand-name"
+                                        class="input-dark"></div>
+                                <div><label class="label-dark">Scope</label><input type="text" id="scope-xin-gia"
+                                        class="input-dark"></div>
+                                <div><label class="label-dark">Budget</label><input type="text" id="budget"
+                                        class="input-dark">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="label-dark">Ngôn ngữ giao tiếp (Đầu ra AI)</label>
+                                    <select id="lang-xingia" class="input-dark">
+                                        <option value="vi">🇻🇳 Gửi cho KOL Việt Nam</option>
+                                        <option value="en">🇬🇧 Gửi cho KOL Nước Ngoài (Tiếng Anh)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button onclick="generateXinGia()" id="btn-xingia" class="btn-primary w-full">✨ Xin Giá bằng
+                                AI</button>
+
+                            <div id="res-xingia-container" class="mt-4 hidden">
+                                <div class="p-4 bg-dark-900 rounded-lg border border-gray-700 text-sm prose max-w-none"
+                                    id="res-xingia"></div>
+                                <button onclick="copyHTMLContent('res-xingia', 'Xin giá message')"
+                                    class="mt-3 btn-secondary text-xs"><i class="fas fa-copy"></i> Copy Message</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2 -->
+                    <div id="step-2" class="tab-content space-y-6">
+                        <div class="mb-8">
+                            <h2 class="text-3xl font-bold text-white mb-2">2. Proceed Internal</h2>
+                            <p class="text-gray-400">Calculate costs, taxes, and generate PRE PNL rows.</p>
+                        </div>
+
+                        <div class="card grid grid-cols-2 gap-5">
+                            <div class="col-span-2">
+                                <h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">KOL Info</h3>
+                            </div>
+                            <div><label class="label-dark">KOL Name</label><input type="text" id="pnl-name"
+                                    class="input-dark">
+                            </div>
+                            <div><label class="label-dark">Link / Zalo (Prioritize Number)</label><input type="text"
+                                    id="pnl-link" class="input-dark"></div>
+                            <div><label class="label-dark">Followers</label><input type="text" id="pnl-followers"
+                                    class="input-dark"></div>
+                            <div><label class="label-dark">Platform</label>
+                                <select id="pnl-platform" class="input-dark" onchange="calculatePnl()">
+                                    <option value="TikTok">TikTok</option>
+                                    <option value="FB">FB</option>
+                                    <option value="YT">YT</option>
+                                    <option value="Threads">Threads</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2"><label class="label-dark">Scope Details</label><textarea
+                                    id="pnl-scope" class="input-dark h-24"></textarea></div>
+
+                            <div class="col-span-2 mt-2">
+                                <h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Finance & KPI
+                                </h3>
+                            </div>
+                            <div><label class="label-dark">Internal Cost</label><input type="number" id="pnl-cost"
+                                    class="input-dark" oninput="calculatePnl()"></div>
+                            <div><label class="label-dark">KPI Target (Views/Engagements)</label><input type="number"
+                                    id="pnl-kpi" class="input-dark" oninput="calculatePnl()"></div>
+                            <div><label class="label-dark">Tax Type</label>
+                                <select id="pnl-tax-type" class="input-dark" onchange="calculatePnl()">
+                                    <option value="PIT">PIT (Lương/9)</option>
+                                    <option value="VAT">VAT (0)</option>
+                                    <option value="HKD">HKD (Lương * 0.07)</option>
+                                </select>
+                            </div>
+                            <div><label class="label-dark">Calculated Tax</label><input type="text" id="pnl-tax-calc"
+                                    class="input-dark bg-dark-800" readonly></div>
+                            <div><label class="label-dark">Calculated Backup Cost</label><input type="text"
+                                    id="pnl-backup" class="input-dark bg-dark-800" readonly></div>
+                        </div>
+
+                        <button onclick="exportPnl()" class="btn-primary w-full py-4 text-base"><i
+                                class="fas fa-clipboard-list"></i> 📋 Copy PRE PNL</button>
+                    </div>
+
+                    <!-- STEP 3 -->
+                    <div id="step-3" class="tab-content space-y-6">
+                        <div class="mb-8">
+                            <h2 class="text-3xl font-bold text-white mb-2">3. Proceed External</h2>
+                            <p class="text-gray-400">Add agency markup and generate External Quotation row.</p>
+                        </div>
+
+                        <div class="card grid grid-cols-2 gap-5">
+                            <div>
+                                <label class="label-dark">Markup Percentage (%)</label>
+                                <input type="number" id="ext-markup" class="input-dark" value="20"
+                                    oninput="calculateExt()">
+                            </div>
+                            <div class="flex items-end">
+                                <button onclick="calculateExt()" class="btn-secondary w-full">Recalculate</button>
+                            </div>
+                            <div>
+                                <label class="label-dark">Internal Cost (from Step 2)</label>
+                                <input type="text" id="ext-int-cost" class="input-dark bg-dark-800" readonly>
+                            </div>
+                            <div>
+                                <label class="label-dark">External Cost</label>
+                                <input type="text" id="ext-ext-cost"
+                                    class="input-dark font-bold text-brand-500 bg-dark-800" readonly>
+                            </div>
+                            <div class="col-span-2">
+                                <label class="label-dark">Margin Made</label>
+                                <input type="text" id="ext-margin"
+                                    class="input-dark font-bold text-green-500 bg-dark-800" readonly>
+                            </div>
+                        </div>
+
+                        <button onclick="exportExternal()" class="btn-primary w-full py-4 text-base"><i
+                                class="fas fa-file-invoice-dollar"></i> 📋 Copy form Báo Giá</button>
+                    </div>
+
+                    <!-- STEP 4 -->
+                    <div id="step-4" class="tab-content space-y-6">
+                        <div class="mb-8">
+                            <h2 class="text-3xl font-bold text-white mb-2">4. Confirm Booking</h2>
+                            <p class="text-gray-400">Deal casting with AI and Standard Confirmation Templates.</p>
+                        </div>
+
+                        <div class="card">
+                            <h3 class="text-lg font-semibold mb-4 text-white"><i
+                                    class="fas fa-robot text-brand-500 mr-2"></i>Deal Cast Generator</h3>
+                            <div class="mb-4">
+                                <label class="label-dark">Ngôn ngữ giao tiếp (Đầu ra AI)</label>
+                                <select id="lang-dealcast" class="input-dark">
+                                    <option value="vi">🇻🇳 Gửi cho KOL Việt Nam</option>
+                                    <option value="en">🇬🇧 Gửi cho KOL Nước Ngoài (Tiếng Anh)</option>
+                                </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="label-dark">Target Internal Cost Limit (Ép giá xuống)</label>
+                                <input type="text" id="deal-limit" class="input-dark" placeholder="e.g. 5.000.000">
+                            </div>
+                            <button onclick="generateDealCast()" id="btn-dealcast" class="btn-primary w-full">✨ Deal
+                                Cast bằng
+                                AI</button>
+
+                            <div id="res-dealcast-container" class="mt-4 hidden">
+                                <div class="p-4 bg-dark-900 rounded-lg border border-gray-700 text-sm prose max-w-none"
+                                    id="res-dealcast"></div>
+                                <button onclick="copyHTMLContent('res-dealcast', 'Deal Cast message')"
+                                    class="mt-3 btn-secondary text-xs"><i class="fas fa-copy"></i> Copy</button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3 class="text-lg font-semibold mb-4 text-white"><i
+                                    class="fas fa-comments text-blue-400 mr-2"></i>Confirmation Templates</h3>
+
+                            <div class="mb-6">
+                                <label class="label-dark">1. Zalo Group Confirm</label>
+                                <div class="relative">
+                                    <textarea id="tpl-zalo" class="input-dark h-32 font-mono text-sm leading-relaxed"
+                                        readonly>Dear team, mình tạo nhóm để thống nhất thông tin...
+Campaign: []
+Nền tảng: []
+NET Cost: []...</textarea>
+                                    <button onclick="copyInput('tpl-zalo')"
+                                        class="absolute top-2 right-2 p-2 bg-dark-700 rounded hover:bg-dark-600 text-gray-300 transition-colors"><i
+                                            class="fas fa-copy"></i></button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="label-dark">2. End Campaign (Xin Blacklist)</label>
+                                <div class="relative">
+                                    <textarea id="tpl-end" class="input-dark h-24 font-mono text-sm leading-relaxed"
+                                        readonly>Dạ team ơi, dự án đã on-air. Nhờ team cung cấp danh sách KOL cần đưa vào blacklist...</textarea>
+                                    <button onclick="copyInput('tpl-end')"
+                                        class="absolute top-2 right-2 p-2 bg-dark-700 rounded hover:bg-dark-600 text-gray-300 transition-colors"><i
+                                            class="fas fa-copy"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 5 -->
+                    <div id="step-5" class="tab-content space-y-6">
+                        <div class="mb-8">
+                            <h2 class="text-3xl font-bold text-white mb-2">5. Weekly Report</h2>
+                            <p class="text-gray-400">Generate standardized reporting rows for tracking.</p>
+                        </div>
+
+                        <div class="card grid grid-cols-2 gap-5">
+                            <div><label class="label-dark">Client</label><input type="text" id="rep-client"
+                                    class="input-dark">
+                            </div>
+                            <div><label class="label-dark">Campaign</label><input type="text" id="rep-campaign"
+                                    class="input-dark"></div>
+                            <div class="col-span-2"><label class="label-dark">Status</label>
+                                <select id="rep-status" class="input-dark">
+                                    <option value="Đã chốt">Đã chốt</option>
+                                    <option value="Cân nhắc">Cân nhắc</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2"><label class="label-dark">Kết quả</label><textarea id="rep-result"
+                                    class="input-dark h-20"></textarea></div>
+                            <div class="col-span-2"><label class="label-dark">Lỗi sai</label><textarea id="rep-error"
+                                    class="input-dark h-20"></textarea></div>
+                        </div>
+
+                        <div class="card grid grid-cols-2 gap-5 mt-4">
+                            <button onclick="saveReportToDb()" class="btn-secondary w-full py-3"><i
+                                    class="fas fa-save text-blue-400"></i> LƯU DÒNG BÁO CÁO</button>
+                            <button onclick="exportReport()" class="btn-primary w-full py-3"><i
+                                    class="fas fa-chart-line"></i> COPY DÒNG BÁO CÁO</button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 6 -->
+                    <div id="step-6" class="tab-content space-y-6">
+                        <div class="mb-8 flex justify-between items-end">
+                            <div>
+                                <h2 class="text-3xl font-bold text-white mb-2">6. Kho Dữ Liệu Tạm (DB)</h2>
+                                <p class="text-gray-400">Manage saved PNLs and Weekly Reports for bulk exporting.</p>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-white"><i
+                                        class="fas fa-file-invoice-dollar text-green-400 mr-2"></i>PRE PNL Đã Chốt</h3>
+                                <div class="flex gap-2">
+                                    <button onclick="clearDb('pnl')"
+                                        class="px-3 py-1.5 rounded-lg bg-red-900/30 text-red-500 hover:bg-red-900/50 transition-colors text-sm border border-red-900"><i
+                                            class="fas fa-trash"></i> Xóa Hết</button>
+                                    <button onclick="copyBulkPnl()"
+                                        class="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 transition-colors text-sm text-white"><i
+                                            class="fas fa-copy"></i> Copy Toàn Bộ PNL (Excel)</button>
+                                </div>
+                            </div>
+
+                            <!-- KPI Dashboard Grid -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div
+                                    class="bg-dark-900/50 border border-gray-800 rounded-lg p-4 flex flex-col items-center shadow-inner">
+                                    <div class="text-gray-400 text-sm font-medium mb-1">Tổng số KOC Đã chốt</div>
+                                    <div class="text-3xl font-bold text-white" id="stat-total-koc">0</div>
+                                </div>
+                                <div
+                                    class="bg-dark-900/50 border border-gray-800 rounded-lg p-4 flex flex-col items-center shadow-inner">
+                                    <div class="text-gray-400 text-sm font-medium mb-1">Tổng Doanh Thu (External)</div>
+                                    <div class="text-2xl font-bold text-blue-400 mt-1" id="stat-total-revenue">0 ₫</div>
+                                </div>
+                                <div
+                                    class="bg-dark-900/50 border border-gray-800 rounded-lg p-4 flex flex-col items-center shadow-inner">
+                                    <div class="text-gray-400 text-sm font-medium mb-1">Tổng Lợi Nhuận (Margin)</div>
+                                    <div class="text-2xl font-bold text-emerald-400 mt-1" id="stat-total-margin">0 ₫
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="overflow-x-auto rounded-lg border border-gray-800">
+                                <table class="data-table" id="table-pnl">
+                                    <thead>
+                                        <tr>
+                                            <th>KOL Name</th>
+                                            <th>Platform</th>
+                                            <th>Internal Cost</th>
+                                            <th>External Cost</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="pnl-tbody">
+                                        <!-- JS Injected Rows -->
+                                        <tr>
+                                            <td colspan="4" class="text-center text-gray-500 italic py-4">Chưa có dữ
+                                                liệu.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div
+                                    class="px-4 py-3 bg-dark-900/50 border-t border-gray-800 text-xs text-brand-400 italic">
+                                    <i class="fas fa-lightbulb mr-1"></i> Dữ liệu hiển thị được rút gọn. Khi bấm Copy,
+                                    hệ thống sẽ tự động xuất chuẩn 22 cột theo format PRE PNL của công ty.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-white"><i
+                                        class="fas fa-chart-pie text-blue-400 mr-2"></i>Báo Cáo Tuần (Weekly)</h3>
+                                <div class="flex gap-2">
+                                    <button onclick="clearDb('reports')"
+                                        class="px-3 py-1.5 rounded-lg bg-red-900/30 text-red-500 hover:bg-red-900/50 transition-colors text-sm border border-red-900"><i
+                                            class="fas fa-trash"></i> Xóa Hết</button>
+                                    <button onclick="copyBulkReports()"
+                                        class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 transition-colors text-sm text-white"><i
+                                            class="fas fa-copy"></i> Copy All Báo Cáo</button>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto rounded-lg border border-gray-800">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Client</th>
+                                            <th>Campaign</th>
+                                            <th>Status</th>
+                                            <th>Kết quả</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reports-tbody">
+                                        <!-- JS Injected Rows -->
+                                        <tr>
+                                            <td colspan="4" class="text-center text-gray-500 italic py-4">Chưa có dữ
+                                                liệu.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+
+            <!-- Toast Container -->
+            <div id="toast-container" class="fixed bottom-5 right-5 flex flex-col gap-3 z-50"></div>
+            <button id="run-tests" class="hidden" onclick="runAutomatedTests()">Run Auto Tests</button>
+
+            <!-- Settings Modal -->
+            <div id="settings-modal"
+                class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+                <div class="bg-dark-800 border border-gray-700 rounded-xl max-w-md w-full p-6 shadow-2xl scale-95 transition-transform duration-300 transform"
+                    id="settings-panel">
+                    <h2 class="text-xl font-semibold mb-4 text-white"><i
+                            class="fas fa-key text-brand-500 mr-2"></i>Gemini API
+                        Key</h2>
+                    <p class="text-sm text-gray-400 mb-4">Store your API key securely in the browser's LocalStorage to
+                        use AI
+                        features.</p>
+                    <input type="password" id="gemini-api-key" placeholder="AIzaSy..." class="input-dark mb-4">
+                    <div class="flex justify-end gap-3">
+                        <button onclick="closeSettingsModal()" class="btn-secondary">Cancel</button>
+                        <button onclick="saveApiKey()" class="btn-primary">Save Key</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bookmarklet-modal"
+                class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+                <div class="bg-dark-800 border border-gray-700 rounded-xl w-11/12 max-w-2xl p-6 flex flex-col shadow-2xl scale-95 transition-transform duration-300 transform"
+                    id="bookmarklet-panel">
+
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-white flex items-center gap-3">
+                            <span class="bg-purple-600/20 text-purple-400 p-2 rounded-lg"><i
+                                    class="fas fa-magic"></i></span>
+                            Cài đặt Magic Bookmarklet
+                        </h2>
+                        <button onclick="closeBookmarkletModal()"
+                            class="text-gray-400 hover:text-white transition-colors text-xl p-2">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4 text-gray-300 text-sm">
+                        <p>Nút thần kỳ này sẽ giúp bạn khi đang lướt kênh TikTok/Facebook của KOC, chỉ cần bấm nút là tự
+                            động gửi Tên & Link thẳng sang Workspace này!</p>
+                        <div class="bg-dark-900 border border-gray-700 p-4 rounded-lg">
+                            <p class="font-bold text-white mb-2">Cách cài đặt (Mất 5 giây):</p>
+                            <ol class="list-decimal pl-5 space-y-2 text-gray-400">
+                                <li>Bôi đen toàn bộ đoạn code trong ô màu tím bên dưới.</li>
+                                <li>Hiển thị thanh Dấu trang (Bookmarks Bar) trên trình duyệt (Ctrl+Shift+B).</li>
+                                <li>Trỏ chuột vào vùng có đoạn code vừa bôi đen, nhấp, giữ và KÉO (Drag & Drop) trực
+                                    tiếp thả lên thanh Dấu Trang của bạn.</li>
+                                <li>Xong! Lần sau đang xem TikTok, click chuột vào Bookmark đó nhé.</li>
+                            </ol>
+                        </div>
+
+                        <div>
+                            <label class="label-dark">Đoạn Code Javascript</label>
+                            <textarea
+                                class="w-full bg-purple-900/20 border border-purple-500/50 text-purple-300 font-mono text-xs rounded-lg p-3 h-32 focus:outline-none resize-none"
+                                readonly>javascript:(function(){let n='',f='',h=window.location.hostname;if(h.includes('tiktok.com')){n=document.querySelector('[data-e2e="user-title"]')?.innerText;f=document.querySelector('[data-e2e="followers-count"]')?.innerText;}else if(h.includes('youtube.com')){n=document.querySelector('#text-container.ytd-channel-name')?.innerText;f=document.querySelector('#subscriber-count')?.innerText;}else if(h.includes('facebook')||h.includes('instagram')||h.includes('threads')){n=document.querySelector('h1')?.innerText||document.querySelector('h2')?.innerText;}if(!n)n=prompt('Không tìm thấy tên. Nhập tên KOC:')||'';if(!f)f=prompt('Không tìm thấy Follower. Nhập số Follower:')||'';const l=window.location.href,d=localStorage.getItem('miracle_tool_url')||'',u=prompt('Dán đường dẫn truy cập file HTML của Tool (file:///... hoặc https://...):',d);if(u){localStorage.setItem('miracle_tool_url',u);window.open(u+(u.includes('?')?'&':'?')+'name='+encodeURIComponent(n)+'&link='+encodeURIComponent(l)+'&followers='+encodeURIComponent(f),'_blank');}})();</textarea>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button onclick="closeBookmarkletModal()" class="btn-primary w-full md:w-auto px-8">Đã
+                            Hiểu</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JS Logic -->
+            <script>
+                // Data
+                const TABS = [
+                    { id: 1, name: 'Scouting & Xin Giá', icon: 'fa-search' },
+                    { id: 2, name: 'Proceed Internal', icon: 'fa-calculator' },
+                    { id: 3, name: 'Proceed External', icon: 'fa-file-invoice-dollar' },
+                    { id: 4, name: 'Confirm Booking', icon: 'fa-handshake' },
+                    { id: 5, name: 'Weekly Report', icon: 'fa-chart-pie' },
+                    { id: 6, name: 'Kho Dữ Liệu Tạm', icon: 'fa-database' },
+                ];
+
+                const BLACKLIST = ["Hoàng Bảo Long", "muoibiennn ✿", "Chây Xì Dách", "Lang Thang Cần Thơ", "Sang Blu", "A ri é", "Thaomoon đi đâu đấy", "người đẹp té giếng", "Kenz Nguyễn", "Mr Xuân Hoàn", "Trang Rita", "Elmich"].map(v => v.toLowerCase());
+
+                // Smart Number Parsing Helper
+                const parseShorthandNumber = (value) => {
+                    if (!value) return '';
+                    let str = String(value).trim().toLowerCase().replace(/,/g, '');
+                    if (str.endsWith('k')) {
+                        let num = parseFloat(str.slice(0, -1));
+                        return isNaN(num) ? str : Math.round(num * 1000).toString();
+                    } else if (str.endsWith('m')) {
+                        let num = parseFloat(str.slice(0, -1));
+                        return isNaN(num) ? str : Math.round(num * 1000000).toString();
+                    }
+                    return str;
+                };
+
+                // Setup initial state and storage variables
+                let currentTabId = 1;
+                let savedPNL = JSON.parse(localStorage.getItem('miracle_pnls') || '[]');
+                let savedReports = JSON.parse(localStorage.getItem('miracle_reports') || '[]');
+
+                // Initialize App
+                document.addEventListener('DOMContentLoaded', () => {
+                    renderSidebar();
+                    renderDbTables();
+
+                    // Attach Blur Event Listeners for Smart Number Parsing
+                    const followerInput = document.getElementById('pnl-followers');
+                    if (followerInput) {
+                        followerInput.addEventListener('blur', (e) => {
+                            e.target.value = parseShorthandNumber(e.target.value);
+                        });
+                    }
+
+                    const kpiInput = document.getElementById('pnl-kpi');
+                    if (kpiInput) {
+                        kpiInput.addEventListener('blur', (e) => {
+                            e.target.value = parseShorthandNumber(e.target.value);
+                            calculatePnl(); // Trigger reactive cost calculation
+                        });
+                    }
+
+                    // Feature: Magic Bookmarklet URL Parsing
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const bName = urlParams.get('name');
+                    const bLink = urlParams.get('link');
+                    const bFollowers = urlParams.get('followers');
+
+                    if (bName || bLink) {
+                        try {
+                            if (bName) document.getElementById('pnl-name').value = bName;
+                            if (bLink) {
+                                document.getElementById('pnl-link').value = bLink;
+
+                                // Auto-Platform Detection
+                                const linkLower = bLink.toLowerCase();
+                                const platformSelect = document.getElementById('pnl-platform');
+
+                                if (linkLower.includes('tiktok.com')) {
+                                    platformSelect.value = 'TikTok';
+                                } else if (linkLower.includes('facebook.com') || linkLower.includes('fb.watch') || linkLower.includes('fb.com')) {
+                                    platformSelect.value = 'FB';
+                                } else if (linkLower.includes('youtube.com') || linkLower.includes('youtu.be')) {
+                                    platformSelect.value = 'YT';
+                                } else if (linkLower.includes('instagram.com') || linkLower.includes('threads.net')) {
+                                    platformSelect.value = 'Threads';
+                                }
+
+                                // Dispatch change event to trigger reactive calculation
+                                platformSelect.dispatchEvent(new Event('change'));
+                            }
+                            if (bFollowers) {
+                                document.getElementById('pnl-followers').value = parseShorthandNumber(bFollowers);
+                            }
+
+                            switchTab(2); // Jump to Step 2 internally
+                            setTimeout(() => showToast('✅ Đã tải dữ liệu KOC tự động từ Bookmarklet!', 'success'), 500);
+                        } catch (e) {
+                            switchTab(1);
+                        }
+                    } else {
+                        switchTab(1);
+                    }
+
+                    // Check for API Key
+                    const apiKey = localStorage.getItem('gemini_api_key_v2');
+                    if (apiKey) {
+                        try {
+                            document.getElementById('api-key-input').value = apiKey;
+                        } catch (e) { }
+                    } else {
+                        setTimeout(openSettingsModal, 1000);
+                        showToast('Welcome! Please configure your Gemini API Key first.', 'error');
+                    }
+                });
+
+                const showToast = (msg, type = 'success') => {
+                    const container = document.getElementById('toast-container');
+                    const el = document.createElement('div');
+                    el.className = `toast px-4 py-3 rounded-lg shadow-lg text-white font-medium flex items-center gap-2 border ${type === 'success' ? 'bg-green-900/90 border-green-500' : type === 'error' ? 'bg-red-900/90 border-red-500' : 'bg-blue-900/90 border-blue-500'}`;
+                    el.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i> <span>${msg}</span>`;
+                    container.appendChild(el);
+                    setTimeout(() => {
+                        el.style.opacity = '0';
+                        el.style.transform = 'translateX(100%)';
+                        setTimeout(() => el.remove(), 300);
+                    }, 3000);
+                };
+
+                const renderSidebar = () => {
+                    const nav = document.getElementById('sidebar-nav');
+                    nav.innerHTML = TABS.map(t => `
+                <button onclick="switchTab(${t.id})" id="btn-tab-${t.id}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm text-gray-400 hover:bg-dark-800 hover:text-gray-200">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-dark-800 text-gray-500 transition-colors" id="icon-tab-${t.id}">
+                        <i class="fas ${t.icon}"></i>
+                    </div>
+                    ${t.id}. ${t.name}
+                </button>
+            `).join('') + `
+            <button onclick="openBookmarkletModal()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm text-gray-400 hover:bg-dark-800 hover:text-gray-200">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-dark-800 text-gray-500 transition-colors">
+                    <i class="fas fa-magic"></i>
+                </div>
+                Magic Bookmarklet
+            </button>
+            `;
+                };
+
+                // Removed redeclaration: let currentTabId = 1;
+                const switchTab = (id) => {
+                    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                    document.getElementById(`step-${id}`).classList.add('active');
+
+                    TABS.forEach(t => {
+                        const btn = document.getElementById(`btn-tab-${t.id}`);
+                        const icon = document.getElementById(`icon-tab-${t.id}`);
+                        if (t.id === id) {
+                            btn.classList.add('bg-brand-600/10', 'text-brand-500');
+                            btn.classList.remove('text-gray-400', 'hover:bg-dark-800', 'hover:text-gray-200');
+                            icon.classList.add('bg-brand-500', 'text-white');
+                            icon.classList.remove('bg-dark-800', 'text-gray-500');
+                        } else {
+                            btn.classList.remove('bg-brand-600/10', 'text-brand-500');
+                            btn.classList.add('text-gray-400', 'hover:bg-dark-800', 'hover:text-gray-200');
+                            icon.classList.remove('bg-brand-500', 'text-white');
+                            icon.classList.add('bg-dark-800', 'text-gray-500');
+                        }
+                    });
+                    currentTabId = id;
+                    if (id === 3) calculateExt(); // Refresh step 3 whenever opened
+                };
+
+                // Modal Logic
+                const openSettingsModal = () => {
+                    const m = document.getElementById('settings-modal');
+                    const p = document.getElementById('settings-panel');
+                    m.classList.remove('hidden');
+                    document.getElementById('gemini-api-key').value = localStorage.getItem('gemini_api_key_v2') || '';
+                    // Force reflow
+                    void m.offsetWidth;
+                    m.classList.remove('opacity-0');
+                    p.classList.remove('scale-95');
+                };
+                const closeSettingsModal = () => {
+                    const m = document.getElementById('settings-modal');
+                    const p = document.getElementById('settings-panel');
+                    m.classList.add('opacity-0');
+                    p.classList.add('scale-95');
+                    setTimeout(() => m.classList.add('hidden'), 300);
+                };
+                const saveApiKey = () => {
+                    const key = document.getElementById('gemini-api-key').value.trim();
+                    if (key) {
+                        localStorage.setItem('gemini_api_key_v2', key);
+                        showToast('API Key saved successfully!');
+                        closeSettingsModal();
+                    } else {
+                        showToast('Please enter a valid key', 'error');
+                    }
+                };
+
+                // Removed openGuideModal and closeGuideModal
+
+                const openBookmarkletModal = () => {
+                    const bg = document.getElementById('bookmarklet-modal');
+                    const panel = document.getElementById('bookmarklet-panel');
+                    bg.classList.remove('hidden');
+                    bg.classList.add('flex');
+                    setTimeout(() => {
+                        bg.classList.remove('opacity-0');
+                        bg.classList.add('opacity-100');
+                        panel.classList.remove('scale-95');
+                        panel.classList.add('scale-100');
+                    }, 10);
+                };
+
+                const closeBookmarkletModal = () => {
+                    const bg = document.getElementById('bookmarklet-modal');
+                    const panel = document.getElementById('bookmarklet-panel');
+                    panel.classList.remove('scale-100');
+                    panel.classList.add('scale-95');
+                    bg.classList.remove('opacity-100');
+                    bg.classList.add('opacity-0');
+                    setTimeout(() => { bg.classList.add('hidden'); bg.classList.remove('flex'); }, 300);
+                };
+
+                // API Caller
+                const callGemini = async (promptText) => {
+                    const key = localStorage.getItem('gemini_api_key_v2');
+                    if (!key) {
+                        openSettingsModal();
+                        showToast('Please configure Gemini API Key first', 'error');
+                        return null;
+                    }
+                    try {
+                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: promptText }] }],
+                                generationConfig: { temperature: 0.7 }
+                            })
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            if (res.status === 429 || res.status === 403 || (data.error && data.error.message && data.error.message.toLowerCase().includes('quota'))) {
+                                throw new Error('QUOTA_EXCEEDED');
+                            }
+                            throw new Error(data.error ? data.error.message : 'API Error');
+                        }
+                        if (data.error) throw new Error(data.error.message);
+                        return data.candidates[0].content.parts[0].text;
+                    } catch (err) {
+                        if (err.message === 'QUOTA_EXCEEDED') throw err;
+                        showToast(`API Error: ${err.message}`, 'error');
+                        return null;
+                    }
+                };
+
+                // Format to x.000 rule
+                const formatMoney = (num) => {
+                    if (!num || isNaN(num) || num === 0) return "0";
+                    return Number(num).toLocaleString('vi-VN').replace(/,/g, '.');
+                };
+
+                let copyTextToClipboard = async (text) => {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        showToast('Copied to clipboard!');
+                    } catch (e) {
+                        // fallback
+                        const t = document.createElement('textarea');
+                        t.value = text;
+                        document.body.appendChild(t);
+                        t.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(t);
+                        showToast('Copied to clipboard!');
+                    }
+                };
+
+                const copyHTMLContent = (id, desc) => {
+                    const el = document.getElementById(id);
+                    // Get plain text of the rendered markdown
+                    copyTextToClipboard(el.innerText || el.textContent);
+                };
+                const copyInput = (id) => {
+                    const el = document.getElementById(id);
+                    copyTextToClipboard(el.value);
+                };
+
+                // --- STEP 1 ---
+                const checkBlacklist = () => {
+                    const val = document.getElementById('blacklist-input').value.toLowerCase().trim();
+                    const w = document.getElementById('blacklist-warning');
+                    if (val && BLACKLIST.some(b => val.includes(b) || b.includes(val))) {
+                        w.classList.remove('hidden');
+                    } else {
+                        w.classList.add('hidden');
+                    }
+                };
+
+                const updateIndustryHint = () => {
+                    const val = document.getElementById('industry-select').value;
+                    const h = document.getElementById('industry-hint');
+                    if (!val) { h.classList.add('hidden'); return; }
+                    h.classList.remove('hidden');
+                    if (val === 'Momo/App') h.innerHTML = "<strong>Hint:</strong> Focus on checking if the KOL's audience is likely to install apps. Check for App installs metrics, retention rates, and clear CTA delivery capabilities.";
+                    else if (val === 'Game') h.innerHTML = "<strong>Hint:</strong> Focus on engaging gameplay showcase, download links placement, active players conversion, and energetic/gaming persona.";
+                    else if (val === 'F&B') h.innerHTML = "<strong>Hint:</strong> Focus on food visual quality, real location reviews, potential to drive offline foot traffic, and appetizing presentation.";
+                };
+
+                const FALLBACK_TEMPLATES = {
+                    scouting: [
+                        "Dạ chào anh/chị, mình là {soName} - Chuyên viên Booking của The Miracle. Hiện tại bên mình đang tìm kiếm đối tác cho chiến dịch của nhãn hàng {brand}. Nhờ team check giúp mình chi phí cho hạng mục: {scope} với ngân sách dự kiến là {budget} nhé. Ngoài ra, để ưu tiên pass form với nhãn, mong team xem xét hỗ trợ thêm các quyền lợi: {focs}. Rất mong được hợp tác cùng kênh!",
+                        "Dạ chào team, mình là {soName} - Chuyên viên Booking của The Miracle. Bên mình đang triển khai dự án cho {brand} và rất ấn tượng với nội dung của kênh. Nhờ team báo giá giúp mình cho hạng mục {scope} (Ngân sách nhãn đang duyệt khoảng {budget}). Nếu được, team hỗ trợ giúp mình thêm các phần: {focs} để mình ưu tiên đẩy booking vào list chốt nhé ạ. Cảm ơn team!",
+                        "Dạ chào anh/chị, mình là {soName} - Chuyên viên Booking của The Miracle. Hiện tại bên mình hợp tác với dự án thuộc nhãn hàng {brand}. Mình xin phép nhận báo giá từ kênh cho hạng mục: {scope}. Ngân sách nhãn đang đưa ra tối đa khoảng {budget}. Để hai bên dễ làm việc lâu dài, mong team có thể hỗ trợ giúp bên mình: {focs}. Mong sớm nhận được phản hồi từ team!"
+                    ],
+                    negotiating: [
+                        "Dạ team ơi, dự án này nhãn hàng có mức ngân sách khá fix, bên em trình duyệt được mức tối đa là {limitCost} cho hạng mục {scope}. Team xem hỗ trợ giúp em mức chi phí này để ưu tiên lên booking nhé. Qua camp này em sẽ ưu tiên đẩy kênh mình vào các job sau có budget tốt hơn ạ!",
+                        "Dạ team ơi, em có check data thì dạo này tương tác kênh mình bị xê dịch chút do thuật toán, nên nhãn hàng chỉ có thể cấp ngân sách tối đa {limitCost} cho {scope}. Anh/chị xem xét hỗ trợ bên em mức này để giữ nhịp hợp tác nhé, các dự án sau brand ngân sách thoáng hơn em sẽ báo liền ạ!",
+                        "Dạ em hiểu chi phí kênh đưa ra, nhưng đợt này nhãn họ siết budget gắt quá team ạ. Em cố gắng xin sếp lắm thì mức trần chỉ được {limitCost} cho {scope}. Mong team thông cảm và hỗ trợ em mức này để em chốt danh sách booking luôn. Em sẽ bù lại bằng việc ưu tiên kênh ở các dự án nhãn hàng lớn sắp tới của bên em nhé!"
+                    ]
+                };
+
+                const generateXinGia = async () => {
+                    const so = document.getElementById('so-name').value;
+                    const brand = document.getElementById('brand-name').value;
+                    const scope = document.getElementById('scope-xin-gia').value;
+                    const bdg = document.getElementById('budget').value || 'chưa xác định';
+
+                    const focChecks = Array.from(document.querySelectorAll('#foc-container input:checked')).map(el => el.value);
+
+                    if (!so || !brand || !scope) return showToast('Please fill required fields (SO, Brand, Scope)', 'error');
+
+                    const btn = document.getElementById('btn-xingia');
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                    btn.disabled = true;
+
+                    const selectedFOCs = focChecks.length ? focChecks.join(', ') : 'Không có yêu cầu đặc biệt';
+
+                    const lang = document.getElementById('lang-xingia').value;
+                    let prompt = "";
+                    if (lang === 'vi') {
+                        prompt = `Bạn là Chuyên viên Booking tại The Miracle Viet Nam. Viết tin nhắn xin báo giá. TUYỆT ĐỐI dùng tiếng Việt tự nhiên, lịch sự. KHÔNG dùng từ lóng (SO, FOC, Scope, Budget). BẮT BUỘC MỞ ĐẦU: 'Dạ chào anh/chị, mình là ${so} - Chuyên viên Booking của The Miracle. Hiện tại bên mình đang tìm kiếm đối tác cho dự án của nhãn hàng ${brand}.' Hỏi chi phí cho ${scope} với ngân sách ${bdg}. Lồng ghép khéo léo yêu cầu các quyền lợi: ${selectedFOCs}.`;
+                    } else {
+                        prompt = `You are a Booking Specialist at The Miracle Viet Nam agency. Write a professional business inquiry email to a foreign KOL. MUST use flawless English. DO NOT use acronyms (like SO, FOC). 
+IMPORTANT: The user has provided their scope and requirements in Vietnamese (${scope}) and required supports (${selectedFOCs}). You MUST silently translate these Vietnamese inputs into natural, professional Business English within the email.
+BẮT BUỘC MỞ ĐẦU BẰNG TIẾNG ANH: 'Dear team, My name is ${so}, Booking Specialist at The Miracle. We are currently looking for partners for a campaign with ${brand}.' Ask for their quotation with an estimated budget of ${bdg}. Politely ask if they can provide the translated additional supports.`;
+                    }
+
+                    let res = null;
+                    try {
+                        res = await callGemini(prompt);
+                    } catch (err) {
+                        if (err.message === 'QUOTA_EXCEEDED') {
+                            showToast('⚠️ API Key đã hết hạn mức (Quota Exceeded). Hệ thống sẽ sử dụng Văn Mẫu Mặc Định. Vui lòng cập nhật API Key mới trong phần Cài đặt.', 'error');
+                            const templates = FALLBACK_TEMPLATES.scouting;
+                            const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+                            res = randomTemplate
+                                .replace(/{soName}/g, so)
+                                .replace(/{brand}/g, brand)
+                                .replace(/{scope}/g, scope)
+                                .replace(/{budget}/g, bdg)
+                                .replace(/{focs}/g, selectedFOCs);
+                        }
+                    }
+
+                    btn.innerHTML = '✨ Xin Giá bằng AI';
+                    btn.disabled = false;
+
+                    if (res) {
+                        document.getElementById('res-xingia-container').classList.remove('hidden');
+                        document.getElementById('res-xingia').innerHTML = marked.parse(res);
+                    }
+                };
+
+                // --- STEP 2 ---
+                let lastInternalCost = 0;
+                let lastScopeStr = '';
+                let lastNameStr = '';
+
+                const calculatePnl = () => {
+                    const cost = parseFloat(document.getElementById('pnl-cost').value) || 0;
+                    const kpi = parseFloat(document.getElementById('pnl-kpi').value) || 0;
+                    const plat = document.getElementById('pnl-platform').value;
+                    const taxT = document.getElementById('pnl-tax-type').value;
+
+                    // Backup Cost
+                    let backup = 0;
+                    if (plat === 'TikTok') backup = kpi * 3.5;
+                    else if (plat === 'FB') backup = kpi * 35;
+                    else if (plat === 'YT') backup = kpi * 35;
+                    else if (plat === 'Threads') backup = kpi * 700;
+
+                    let tax = 0;
+                    if (taxT === 'PIT') tax = cost / 9;
+                    else if (taxT === 'HKD') tax = cost * 0.07;
+
+                    // Fix floating point precision mathematically before rounding or assertions
+                    tax = Math.round(tax);
+                    backup = Math.round(backup);
+
+                    document.getElementById('pnl-tax-calc').value = formatMoney(tax);
+                    document.getElementById('pnl-backup').value = formatMoney(backup);
+
+                    // save for step 3
+                    lastInternalCost = cost;
+                    lastScopeStr = document.getElementById('pnl-scope').value;
+                    lastNameStr = document.getElementById('pnl-name').value;
+                    if (currentTabId === 3) calculateExt();
+
+                    return { cost, kpi, taxT, tax, backup };
+                };
+
+                const getPnlRowData = () => {
+                    const name = document.getElementById('pnl-name').value || '';
+                    const link = document.getElementById('pnl-link').value || '';
+                    const followers = document.getElementById('pnl-followers').value || '';
+                    const plat = document.getElementById('pnl-platform').value || '';
+                    const scopeText = document.getElementById('pnl-scope').value || '';
+
+                    const focChecks = Array.from(document.querySelectorAll('#foc-container input:checked')).map(el => el.value);
+                    const fullScope = scopeText + (focChecks.length ? ' + FOC: ' + focChecks.join(', ') : '');
+
+                    const { cost: intCost, taxT, tax, backup, kpi } = calculatePnl();
+                    const extCost = calculateExt();
+
+                    const grossProfit = extCost - intCost - tax - backup;
+                    const marginPercent = extCost > 0 ? ((grossProfit / extCost) * 100).toFixed(2) + "%" : "0%";
+
+                    // Export string for a SINGLE row export (to remain compatible with Step 2 Copy Button)
+                    const rowStr = [1, name, plat, link, followers, "", fullScope, formatMoney(extCost), formatMoney(extCost), 1, "Video/ Bài", 0, formatMoney(extCost), formatMoney(intCost), 1, formatMoney(intCost), formatMoney(tax), formatMoney(backup), formatMoney(grossProfit), marginPercent, taxT, formatMoney(kpi)].join('\t');
+
+                    return { name, plat, link, followers, contact: "", fullScope, extCost, intCost, tax, taxT, backup, kpi, grossProfit, marginPercent, rawString: rowStr };
+                };
+
+                const exportPnl = () => {
+                    const data = getPnlRowData();
+                    copyTextToClipboard(data.rawString);
+                };
+
+                const savePnlToDb = () => {
+                    const data = getPnlRowData();
+                    if (!data.name || !data.intCost) return showToast('KOL Name and Cost are required', 'error');
+
+                    savedPNL.push(data);
+                    localStorage.setItem('miracle_pnls', JSON.stringify(savedPNL));
+                    renderDbTables();
+                    showToast('PNL saved to Local Database', 'success');
+                };
+
+                // --- STEP 3 ---
+                const calculateExt = () => {
+                    const markup = parseFloat(document.getElementById('ext-markup').value) || 20;
+                    const intCost = lastInternalCost;
+                    document.getElementById('ext-int-cost').value = formatMoney(intCost);
+
+                    const extCost = intCost * (1 + markup / 100);
+                    const margin = extCost - intCost;
+
+                    document.getElementById('ext-ext-cost').value = formatMoney(extCost);
+                    document.getElementById('ext-margin').value = formatMoney(margin);
+
+                    return extCost;
+                };
+
+                const exportExternal = () => {
+                    const extCost = calculateExt();
+                    // Name | Scope | ExtCost | "Video/Bài" | 1 | 0 | ExtCost
+                    const rowStr = `${lastNameStr} \t${lastScopeStr} \t${formatMoney(extCost)} \t"Video/Bài"\t1\t0\t${formatMoney(extCost)} `;
+                    copyTextToClipboard(rowStr);
+                };
+
+                // --- STEP 4 ---
+                const generateDealCast = async () => {
+                    const limit = document.getElementById('deal-limit').value;
+                    if (!limit) return showToast('Please enter a target internal cost limit', 'error');
+
+                    const btn = document.getElementById('btn-dealcast');
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                    btn.disabled = true;
+
+                    const lang = document.getElementById('lang-dealcast').value;
+                    let prompt = "";
+                    if (lang === 'vi') {
+                        prompt = `Bạn là Chuyên viên Booking.Viết tin nhắn đàm phán giảm chi phí xuống mức ${limit}. Dùng thuần tiếng Việt, lịch sự.KHÔNG dùng từ lóng(Deal cast, Margin).Đưa ra lý do khách quan(thuật toán, nhãn hàng siết ngân sách) để thuyết phục.Mềm mỏng nhưng kiên quyết.`;
+                    } else {
+                        prompt = `You are a Booking Specialist.Write a professional negotiation email to reduce the quotation to ${limit}. Use flawless English.
+                            IMPORTANT: The user's intent is to politely negotiate. You MUST politely translate the concept of "Algorithm updates dropping engagement" or "strict client budgets" into extremely polite, professional business English to justify this maximum allowable budget constraint. Be polite, understanding, but firm, and suggest future collaborations to compensate.`;
+                    }
+
+                    let res = null;
+                    try {
+                        res = await callGemini(prompt);
+                    } catch (err) {
+                        if (err.message === 'QUOTA_EXCEEDED') {
+                            showToast('⚠️ API Key đã hết hạn mức (Quota Exceeded). Hệ thống sẽ sử dụng Văn Mẫu Mặc Định. Vui lòng cập nhật API Key mới trong phần Cài đặt.', 'error');
+                            const currentScope = document.getElementById('pnl-scope')?.value || 'các hạng mục bàn giao';
+                            const templates = FALLBACK_TEMPLATES.negotiating;
+                            const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+                            res = randomTemplate
+                                .replace(/{limitCost}/g, limit)
+                                .replace(/{scope}/g, currentScope);
+                        }
+                    }
+
+                    btn.innerHTML = '✨ Deal Cast bằng AI';
+                    btn.disabled = false;
+
+                    if (res) {
+                        document.getElementById('res-dealcast-container').classList.remove('hidden');
+                        document.getElementById('res-dealcast').innerHTML = marked.parse(res);
+                    }
+                };
+
+                // --- STEP 5 ---
+                const exportReport = () => {
+                    const client = document.getElementById('rep-client').value || '';
+                    const camp = document.getElementById('rep-campaign').value || '';
+                    const status = document.getElementById('rep-status').value || '';
+                    // Newline to spaces so it won't break tab separation
+                    const result = document.getElementById('rep-result').value.replace(/\n/g, ' ') || '';
+                    const err = document.getElementById('rep-error').value.replace(/\n/g, ' ') || '';
+
+                    // Client | Campaign | Status | "" | "" | Kết quả | Lỗi sai
+                    const rowStr = `${client}\t${camp}\t${status}\t""\t""\t${result}\t${err}`;
+                    copyTextToClipboard(rowStr);
+                };
+
+                const saveReportToDb = () => {
+                    const client = document.getElementById('rep-client').value || '';
+                    const camp = document.getElementById('rep-campaign').value || '';
+                    const status = document.getElementById('rep-status').value || '';
+                    const result = document.getElementById('rep-result').value.replace(/\n/g, ' ') || '';
+                    const err = document.getElementById('rep-error').value.replace(/\n/g, ' ') || '';
+
+                    if (!client || !camp) return showToast('Client and Campaign are required', 'error');
+
+                    const rowStr = `${client}\t${camp}\t${status}\t""\t""\t${result}\t${err}`;
+                    savedReports.push({ client, camp, status, result, rawString: rowStr });
+                    localStorage.setItem('miracle_reports', JSON.stringify(savedReports));
+                    renderDbTables();
+                    showToast('Weekly Report saved to Local Database', 'success');
+                };
+
+                // --- STEP 6 (LOCAL DB) ---
+                const renderDbTables = () => {
+                    const pBody = document.getElementById('pnl-tbody');
+                    if (savedPNL.length === 0) {
+                        pBody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 italic py-4">Chưa có dữ liệu PNL.</td></tr>';
+                        document.getElementById('stat-total-koc').innerText = "0";
+                        document.getElementById('stat-total-revenue').innerText = "0 ₫";
+                        document.getElementById('stat-total-margin').innerText = "0 ₫";
+                    } else {
+                        pBody.innerHTML = savedPNL.map(p => `<tr><td>${p.name}</td><td>${p.plat || '-'}</td><td class="text-brand-400">${formatMoney(p.intCost || p.cost || 0)}</td><td class="text-green-400">${formatMoney(p.extCost || 0)}</td></tr>`).join('');
+
+                        // Calculate Dashboard KPIs
+                        const totalKoc = savedPNL.length;
+                        const totalRevenue = savedPNL.reduce((sum, p) => sum + (parseFloat(p.extCost) || 0), 0);
+                        const totalMargin = savedPNL.reduce((sum, p) => sum + (parseFloat(p.grossProfit) || 0), 0);
+
+                        document.getElementById('stat-total-koc').innerText = totalKoc;
+                        document.getElementById('stat-total-revenue').innerText = formatMoney(totalRevenue) + " ₫";
+                        document.getElementById('stat-total-margin').innerText = formatMoney(totalMargin) + " ₫";
+                    }
+
+                    const rBody = document.getElementById('reports-tbody');
+                    if (savedReports.length === 0) {
+                        rBody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 italic py-4">Chưa có dữ liệu Báo Cáo.</td></tr>';
+                    } else {
+                        rBody.innerHTML = savedReports.map(r => `<tr><td>${r.client}</td><td>${r.camp}</td><td><span class="px-2 py-1 rounded-full text-xs ${r.status === 'DONE' ? 'bg-green-900/40 text-green-400' : 'bg-yellow-900/40 text-yellow-400'}">${r.status}</span></td><td class="truncate max-w-xs" title="${r.result}">${r.result}</td></tr>`).join('');
+                    }
+                };
+
+                const copyBulkPnl = () => {
+                    if (!savedPNL.length) return showToast('No data to copy', 'error');
+
+                    const bulkRows = savedPNL.map((p, index) => {
+                        const stt = index + 1;
+                        return [
+                            stt,
+                            p.name,
+                            p.plat || "",
+                            p.link || "",
+                            p.followers || "",
+                            p.contact || "",
+                            p.fullScope || p.scope || "",
+                            formatMoney(p.extCost || 0),
+                            formatMoney(p.extCost || 0),
+                            1,
+                            "Video/ Bài",
+                            0,
+                            formatMoney(p.extCost || 0),
+                            formatMoney(p.intCost || p.cost || 0),
+                            1,
+                            formatMoney(p.intCost || p.cost || 0),
+                            formatMoney(p.tax || 0),
+                            formatMoney(p.backup || 0),
+                            formatMoney(p.grossProfit || 0),
+                            p.marginPercent || "0%",
+                            p.taxT || "",
+                            formatMoney(p.kpi || 0)
+                        ].join('\t');
+                    });
+
+                    copyTextToClipboard(bulkRows.join('\n'));
+                    showToast(`Copied ${savedPNL.length} PRE PNL rows with 22 columns!`);
+                };
+
+                const copyBulkReports = () => {
+                    if (!savedReports.length) return showToast('No data to copy', 'error');
+                    const bulkText = savedReports.map(r => r.rawString).join('\n');
+                    copyTextToClipboard(bulkText);
+                    showToast(`Copied ${savedReports.length} Report rows for Excel`);
+                };
+
+                const clearDb = (type) => {
+                    if (!confirm(`Are you sure you want to completely delete all saved ${type === 'pnl' ? 'PNL' : 'Weekly Reports'} records? This cannot be undone.`)) return;
+                    if (type === 'pnl') {
+                        savedPNL = [];
+                        localStorage.removeItem('miracle_pnls');
+                    } else {
+                        savedReports = [];
+                        localStorage.removeItem('miracle_reports');
+                    }
+                    renderDbTables();
+                    showToast('Database cleared', 'success');
+                };
+
+                // --- E2E Automated Test Suite ---
+                window.runAutomatedTests = async () => {
+                    console.log("=== STARTING AUTOMATED TEST SUITE ===");
+                    let passed = 0;
+                    let failed = 0;
+
+                    const assert = (condition, testName, message) => {
+                        if (condition) {
+                            console.log(`✅ PASS: ${testName}`);
+                            passed++;
+                        } else {
+                            console.error(`❌ FAIL: ${testName} - ${message}`);
+                            failed++;
+                        }
+                    };
+
+                    // Hijack clipboard writing to capture string outputs
+                    let clipboardMemory = "";
+                    const originalCopier = copyTextToClipboard;
+                    copyTextToClipboard = async (text) => {
+                        clipboardMemory = text;
+                    };
+
+                    try {
+                        // TEST 1: Blacklist Scanner
+                        const blacklistInp = document.getElementById('blacklist-input');
+                        const blacklistWarn = document.getElementById('blacklist-warning');
+
+                        blacklistInp.value = "Sang Blu";
+                        checkBlacklist();
+                        assert(!blacklistWarn.classList.contains('hidden'), "Test 1A", "Sang Blu should be warned");
+
+                        blacklistInp.value = "Tiến Mạnh";
+                        checkBlacklist();
+                        assert(blacklistWarn.classList.contains('hidden'), "Test 1B", "Tiến Mạnh should be safe");
+
+                        // TEST 2: TikTok & HKD Tax Formula
+                        document.getElementById('pnl-platform').value = "TikTok";
+                        document.getElementById('pnl-tax-type').value = "HKD";
+                        document.getElementById('pnl-cost').value = "10000000";
+                        document.getElementById('pnl-kpi').value = "200000";
+
+                        const res2 = calculatePnl();
+                        assert(res2.backup === 700000, "Test 2A", "Backup Cost mismatch for TikTok");
+                        assert(res2.tax === 700000, "Test 2B", "Tax mismatch for HKD");
+
+                        exportPnl();
+                        assert(clipboardMemory.includes("10.000.000"), "Test 2C", "String interpolation should output 10.000.000");
+
+                        // TEST 3: Facebook & PIT Tax Formula
+                        document.getElementById('pnl-platform').value = "FB";
+                        document.getElementById('pnl-tax-type').value = "PIT";
+                        document.getElementById('pnl-cost').value = "9000000";
+                        document.getElementById('pnl-kpi').value = "2000";
+
+                        const res3 = calculatePnl();
+                        assert(res3.backup === 70000, "Test 3A", "Backup Cost mismatch for Facebook");
+                        assert(res3.tax === 1000000, "Test 3B", "Tax mismatch for PIT");
+
+                        // TEST 4: Markup & Margin Calculation
+                        document.getElementById('pnl-cost').value = "10000000";
+                        calculatePnl(); // Set global lastInternalCost
+
+                        document.getElementById('ext-markup').value = "20";
+                        const extCost = calculateExt();
+
+                        assert(extCost === 12000000, "Test 4A", "External cost calculation mismatch");
+                        assert(document.getElementById('ext-margin').value === "2.000.000", "Test 4B", "Margin value mismatch");
+
+                        exportExternal();
+                        assert(clipboardMemory.includes("12.000.000"), "Test 4C", "External format missing 12.000.000 string");
+
+                        // TEST 5: FOC & AI Prompt Formatting
+                        // Select checkboxes: "Miễn phí cung cấp mã Code Ads 7 ngày (Bắt buộc TikTok)" and "Miễn phí SDHA 1 tháng"
+                        document.querySelectorAll('#foc-container input[type="checkbox"]').forEach(el => el.checked = false);
+                        const focBoxes = Array.from(document.querySelectorAll('#foc-container input'));
+                        focBoxes[0].checked = true;
+                        focBoxes[1].checked = true;
+
+                        document.getElementById('budget').value = "3.000.000";
+                        document.getElementById('so-name').value = "Tester";
+                        document.getElementById('brand-name').value = "BrandX";
+                        document.getElementById('scope-xin-gia').value = "1 Clip";
+
+                        // Hijack window.fetch to capture payload instead of making an API call
+                        const originalFetch = window.fetch;
+                        let capturedPrompt = "";
+                        window.fetch = async (url, opts) => {
+                            if (url.includes("generativelanguage.googleapis.com")) {
+                                capturedPrompt = JSON.parse(opts.body).contents[0].parts[0].text;
+                                return { json: async () => ({ candidates: [{ content: { parts: [{ text: "Mock LLM Response" }] } }] }) };
+                            }
+                            return originalFetch(url, opts);
+                        };
+
+                        // Bypass API Key verification block temporarily by ensuring local storage is set pseudo
+                        const oldKey = localStorage.getItem('gemini_api_key_v2');
+                        localStorage.setItem('gemini_api_key_v2', 'test_key');
+
+                        await generateXinGia();
+
+                        window.fetch = originalFetch;
+                        if (oldKey) localStorage.setItem('gemini_api_key_v2', oldKey);
+                        else localStorage.removeItem('gemini_api_key_v2');
+
+                        assert(capturedPrompt.includes("Dạ chào anh/chị, mình là Tester - Chuyên viên Booking của The Miracle. Hiện tại bên mình đang tìm kiếm đối tác cho dự án của nhãn hàng BrandX."), "Test 5A", "Missing mandatory opening line");
+                        assert(capturedPrompt.includes("Miễn phí cung cấp mã Code Ads 7 ngày (Bắt buộc TikTok)"), "Test 5B", "Missing FOC #1 in prompt");
+                        assert(capturedPrompt.includes("Miễn phí SDHA 1 tháng"), "Test 5C", "Missing FOC #2 in prompt");
+
+                        // TEST 6: Weekly Report Export
+                        document.getElementById('rep-client').value = "Client X";
+                        document.getElementById('rep-campaign').value = "Summer Sales";
+                        document.getElementById('rep-status').value = "WIP";
+                        document.getElementById('rep-result').value = "Line 1\nLine 2";
+                        document.getElementById('rep-error').value = "No error";
+
+                        exportReport();
+                        assert(clipboardMemory.includes("Client X\tSummer Sales"), "Test 6A", "Weekly report string is incorrect");
+                        assert(!clipboardMemory.includes("\nLine 2"), "Test 6B", "Newlines should be sanitized from report text");
+
+                        // TEST 7: Local Database Save & Bulk PNL Export
+                        // Mock confirm to always return true for testing clearing DB
+                        const originalConfirm = window.confirm;
+                        window.confirm = () => true;
+
+                        clearDb('pnl'); // Start fresh
+                        assert(savedPNL.length === 0, "Test 7A", "Database should be empty after clear");
+
+                        document.getElementById('pnl-name').value = "Mock KOL 1";
+                        document.getElementById('pnl-link').value = "Link 1";
+                        document.getElementById('pnl-followers').value = "100k";
+                        document.getElementById('pnl-platform').value = "FB";
+                        document.getElementById('pnl-cost').value = "1000000";
+                        document.getElementById('pnl-kpi').value = "50000";
+                        savePnlToDb();
+
+                        document.getElementById('pnl-name').value = "Mock KOL 2";
+                        document.getElementById('pnl-link').value = "Link 2";
+                        document.getElementById('pnl-followers').value = "200k";
+                        document.getElementById('pnl-platform').value = "TikTok";
+                        document.getElementById('pnl-cost').value = "5000000";
+                        document.getElementById('pnl-kpi').value = "150000";
+                        savePnlToDb();
+
+                        assert(savedPNL.length === 2, "Test 7B", "Database should have exactly 2 entries");
+
+                        clipboardMemory = "";
+                        copyBulkPnl();
+                        const bulkRows = clipboardMemory.split('\n');
+                        assert(bulkRows.length === 2, "Test 7C", `Bulk Copy should have exactly 2 rows separated by newline, got ${bulkRows.length}`);
+                        assert(bulkRows[0].includes("Mock KOL 1") && bulkRows[1].includes("Mock KOL 2"), "Test 7D", "Bulk Copy rows contain incorrect data");
+
+                        // Restore confirm and clear mock data
+                        window.confirm = originalConfirm;
+                        clearDb('pnl');
+
+                    } catch (e) {
+                        console.error("Test execution encountered an unexpected error:", e);
+                        failed++;
+                    } finally {
+                        copyTextToClipboard = originalCopier;
+                    }
+
+                    console.log("=== TESTS COMPLETE ===");
+                    alert(`Tests Completed!\n✅ Passed: ${passed}\n❌ Failed: ${failed}`);
+                };
+            </script>
+</body>
+
+</html>
