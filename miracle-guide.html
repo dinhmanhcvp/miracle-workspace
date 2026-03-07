@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sổ Tay Phép Thuật - The Miracle Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+
+        .card {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .step-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-[#0f172a]">
+    <div class="max-w-5xl mx-auto px-4 py-12">
+        <div class="text-center mb-16">
+            <h1
+                class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 mb-4">
+                <i class="fas fa-book-magic text-purple-400 mr-2"></i> Sổ Tay Phép Thuật (User Guide)
+            </h1>
+            <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+                Hướng dẫn sử dụng toàn tập The Miracle Workspace. Nơi tự động hóa mọi quy trình Booking KOC của bạn từ
+                A-Z.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <!-- Step 1 -->
+            <div class="card">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="step-icon bg-blue-500 shadow-lg shadow-blue-500/30">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">1. Scouting & Xin Giá</h2>
+                        <span class="text-blue-400 text-sm font-medium">Tìm KOL & Sinh kịch bản đàm phán bằng AI</span>
+                    </div>
+                </div>
+                <ul class="text-gray-300 space-y-3 text-sm">
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Check Blacklist:</b> Gõ tên KOL vào ô đầu
+                        tiên. Hệ thống sẽ tự động đối chiếu với danh sách cấm của nhãn hàng. Nếu KOL có "phốt", hệ thống
+                        sẽ bật cảnh báo đỏ.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Chọn Quyền Lợi (FOC):</b> Tick chọn các hạng
+                        mục bắt buộc (VD: Code Ads 7 ngày, Chuyển quyền SDHA...).</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>AI Xin Giá:</b> Điền tên bạn và Brand ➝ Ấn
+                        nút <b>"✨ Phác Thảo Tin Nhắn Xin Giá"</b>. AI sẽ tự động viết 1 đoạn văn lủng củng thành tin
+                        nhắn chào mời siêu chuyên nghiệp bằng tiếng Việt không chứa từ lóng.</li>
+                </ul>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="card">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="step-icon bg-green-500 shadow-lg shadow-green-500/30">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">2. Proceed Internal</h2>
+                        <span class="text-green-400 text-sm font-medium">Tính Giá Nhập (Giá gốc) & Lập PNL</span>
+                    </div>
+                </div>
+                <ul class="text-gray-300 space-y-3 text-sm">
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Tự Động Tính Cước:</b> Nhập Lương KOL (Giá
+                        chưa thuế). Chọn % Thuế (PIT/VAT/HKD), hệ thống tự cộng trừ nhân chia phí Thuế và Phí Rủi Ro
+                        (Backup).</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Xuất Excel Dòng Kẻ:</b> Nút <b>"COPY DÒNG
+                            PNL"</b> giúp copy đúng 1 hàng dài chứa 22 cột chuẩn format nội bộ.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>🗄️ Lưu Vào Kho:</b> Nút xanh lá <b>"💾 LƯU
+                            VÀO KHO PNL"</b> sẽ ghi nhớ lại số liệu KOL này vào cơ sở dữ liệu (Database) để tí nữa kết
+                        xuất 1 thể.</li>
+                </ul>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="card">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="step-icon bg-purple-500 shadow-lg shadow-purple-500/30">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">3. Proceed External</h2>
+                        <span class="text-purple-400 text-sm font-medium">Tính Giá Bán Cho Khách</span>
+                    </div>
+                </div>
+                <ul class="text-gray-300 space-y-3 text-sm">
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Tính Lợi Nhuận Gộp (Margin):</b> Chỉ cần gõ
+                        mức % Margin mục tiêu (VD: 25%), hệ thống sẽ "đội giá" nhập lên và tự hiển thị mức Giá Bán Ra
+                        (External Cost).</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>Copy trực tiếp Báo Giá Dành Cho Khách (Chỉ có
+                        tên, link, giá) ra Excel/Slides mà không lo lộ giá gốc.</li>
+                </ul>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="card">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="step-icon bg-yellow-500 shadow-lg shadow-yellow-500/30">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">4. Confirm Booking</h2>
+                        <span class="text-yellow-400 text-sm font-medium">Ép Giá Khôn Khéo Cùng AI</span>
+                    </div>
+                </div>
+                <ul class="text-gray-300 space-y-3 text-sm">
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Deal Cost:</b> Lúc KOC báo giá quá cao. Bạn
+                        nhập giá mong muốn khống lên (Target Cost) ➝ Ấn <b>"✨ Viết Văn Bản Ép Giá"</b>.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>AI sẽ vào vai bạn, bịa ra đủ loại lý do nghe cực
+                        kỳ lọt tai (khổ nhục kế, chính sách thắt chặt...) để nài nỉ KOC hạ giá lịch sự nhất có thể.</li>
+                </ul>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="card">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="step-icon shadow-lg"
+                        style="background-color: #f97316; box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.3);">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">5. Weekly Report</h2>
+                        <span class="text-orange-400 text-sm font-medium">Báo Cáo Tiến Độ Chốt Sales</span>
+                    </div>
+                </div>
+                <ul class="text-gray-300 space-y-3 text-sm">
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>Vào Thứ 6 hàng tuần, bạn liệt kê các Job đã làm
+                        vào Form này.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>Bấm <b>"💾 LƯU DÒNG BÁO CÁO"</b> để gộp chung
+                        vào Database. Cuối ngày copy 1 loạt dán nộp Leader là xong việc về sớm 5 phút.</li>
+                </ul>
+            </div>
+
+            <!-- Step 6 -->
+            <div class="card">
+                <div class="flex items-start gap-4 mb-4">
+                    <div class="step-icon bg-cyan-600 shadow-lg shadow-cyan-600/30">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">6. Kho Dữ Liệu Tạm (Local DB)</h2>
+                        <span class="text-cyan-400 text-sm font-medium">Trạm Tổng Hợp Excel 22 Columns</span>
+                    </div>
+                </div>
+                <ul class="text-gray-300 space-y-3 text-sm">
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>KPI Dashboard:</b> Theo dõi doanh thu và lợi
+                        nhuận gộp (Margin) realtime của tất cả các KOC bạn đã "Lưu Vào Kho PNL" ở Bước 2.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Copy Toàn Bộ:</b> Chỉ cần bấm 1 nút là
+                        <b>xuất được chính xác 22 Cột</b> theo bảng Excel chuẩn của Công Ty (từ STT, Contact, Profit cho
+                        đến Loại Thuế). Đảm bảo Copy Paste không thừa không thiếu 1 lề nào.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i>Lưu ý: Dữ liệu này lưu trong `Trình duyệt` của
+                        bạn. Dù mất điện F5 lại vẫn còn. Phải ấn "XÓA HẾT" thì nó mới trắng tinh.</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <!-- Magic Bookmarklet Section -->
+        <div
+            class="mt-12 bg-purple-900/20 border border-purple-500/30 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10">
+                <i class="fas fa-magic text-9xl text-purple-400"></i>
+            </div>
+
+            <div class="relative z-10">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-purple-600 text-white p-2 rounded-lg"><i class="fas fa-bolt"></i> Tính Năng
+                        Ẩn</span>
+                    <h2 class="text-3xl font-bold text-purple-300">Magic Bookmarklet</h2>
+                </div>
+
+                <p class="text-gray-300 text-lg mb-6 max-w-3xl">
+                    Đẩy dữ liệu từ TikTok/Facebook thẳng vào Tool mà không cần Copy/Paste thủ công. Hãy coi nó như
+                    Extension trình duyệt riêng của bạn!
+                </p>
+
+                <div class="bg-dark-900/50 rounded-xl p-5 border border-purple-900/50">
+                    <h3 class="text-white font-semibold mb-3">🛠️ Cách lắp ráp (Mất 5s):</h3>
+                    <ol class="list-decimal pl-5 space-y-2 text-gray-400 mb-6">
+                        <li>Vào Tool > Nhìn góc dưới bên trái có nút <b>Magic Bookmarklet</b> > Bấm Mở.</li>
+                        <li>Bôi đen đoạn mã Javascript màu tím trong khung.</li>
+                        <li>Ấn <kbd
+                                class="bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs border border-gray-700">Ctrl
+                                + Shift + B</kbd> để hiện Thanh Dấu Trang (Bookmarks).</li>
+                        <li>Kéo thả đoạn mã đó trực tiếp lên thanh Dấu Trang. Xong!</li>
+                    </ol>
+
+                    <h3 class="text-white font-semibold mb-3">🪄 Cách sử dụng:</h3>
+                    <ul class="text-gray-400 space-y-2">
+                        <li>1. Khi đang lướt TikTok/FB duyệt KOC, bấm vào Bookmark vừa tạo.</li>
+                        <li>2. Nhập "Tên", nhập "Follower", sau đó nhập đường dẫn (File path) của cái Tool này (nếu được
+                            hỏi).</li>
+                        <li>3. BÙM! Trình duyệt sẽ tự nhảy qua Tool, điền sẵn thông số và Focus ngay về Bước 2 cho bạn.
+                            🚀</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+
+</html>
