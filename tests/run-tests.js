@@ -32,8 +32,11 @@ const openPage = async (browser) => {
     for (const r of results) check(r.pass, r.name, r.message);
     const real = await page.evaluate(() => localStorage.getItem('miracle_pnls'));
     check(real && real.includes('REAL USER ROW'), 'User data preserved after in-app tests');
-    const migrated = await page.evaluate(() => ({ bl: JSON.parse(localStorage.getItem('miracle_blacklist_custom') || '[]'), agency: localStorage.getItem('miracle_agency_name') }));
-    check(migrated.bl.includes('Sang Blu') && migrated.agency === 'The Miracle', 'Legacy blacklist and agency migrated for existing users', JSON.stringify(migrated));
+    await page.evaluate(() => { localStorage.setItem('miracle_blacklist_custom', JSON.stringify(['Old Name Only'])); localStorage.removeItem('miracle_blacklist_v2'); });
+    await page.reload();
+    await page.waitForFunction(() => typeof window.runAutomatedTests === 'function');
+    const migrated = await page.evaluate(() => getBlacklistEntries().map(e => e.name));
+    check(migrated.join() === 'Old Name Only', 'Old name-only blacklist converted to the new format', JSON.stringify(migrated));
     check(!errors.length, 'No page errors (suite)', errors.join(' | '));
     await page.close();
   }
@@ -114,7 +117,7 @@ const openPage = async (browser) => {
     await page.evaluate(() => { document.getElementById('so-name').value = 'An'; document.getElementById('brand-name').value = 'Glow Lab'; document.getElementById('scope-xin-gia').value = '1 video'; });
     await page.evaluate(() => generateXinGia());
     const msg = await page.textContent('#res-xingia');
-    check(msg.includes('ABC Media') && !msg.includes('The Miracle'), 'Fallback message uses agency name', msg.slice(0, 120));
+    check(msg.includes('ABC Media') && !msg.includes('agency bên mình'), 'Fallback message uses agency name', msg.slice(0, 120));
 
     check(!errors.length, 'No page errors (E2E)', errors.join(' | '));
     await ctx.close();
@@ -403,6 +406,95 @@ const openPage = async (browser) => {
       check(!errors.length, 'No page errors (xlsx)', errors.join(' | '));
       await ctx.close();
     }
+  }
+
+  // ---------- 6. Agency configuration and licensing ----------
+  {
+    const fs = require('fs');
+    const crypto = require('crypto');
+    const root = path.resolve(__dirname, '..');
+    const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+    const jwk = publicKey.export({ format: 'jwk' });
+    const b64url = (b) => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const issue = (payload) => { const d = Buffer.from(JSON.stringify({ v: 1, id: 'test', ...payload })); return `${b64url(d)}.${b64url(crypto.sign('sha256', d, { key: privateKey, dsaEncoding: 'ieee-p1363' }))}`; };
+    const errors = [];
+    const open = async ({ licensing }) => {
+      const ctx = await browser.newContext();
+      await ctx.route('https://tool.test/**', (route) => {
+        const p = new URL(route.request().url()).pathname.replace(/^\//, '') || 'index.html';
+        if (licensing && p === 'assets/license-key.js') return route.fulfill({ contentType: 'text/javascript', body: `window.LICENSE_PUBLIC_KEY = ${JSON.stringify(jwk)}; window.LICENSE_VENDOR = { name: 'Vendor Demo', contact: 'vendor@example.com' };` });
+        const file = path.join(root, p);
+        if (!file.startsWith(root) || !fs.existsSync(file)) return route.fulfill({ status: 404, body: '' });
+        route.fulfill({ body: fs.readFileSync(file), contentType: p.endsWith('.js') ? 'text/javascript' : p.endsWith('.css') ? 'text/css' : 'text/html; charset=utf-8' });
+      });
+      const page = await ctx.newPage();
+      page.on('pageerror', (e) => errors.push(e.message));
+      page.on('dialog', (d) => d.accept());
+      await page.goto('https://tool.test/index.html');
+      await page.waitForFunction(() => window.License && typeof renderConfigTab === 'function');
+      await page.waitForTimeout(300);
+      return { ctx, page };
+    };
+
+    // Config (licensing off)
+    const { ctx: c1, page } = await open({ licensing: false });
+    check(await page.isHidden('#license-banner') && await page.isHidden('#license-lock'), 'Licensing disabled by default: no banner, no lock');
+    await page.click('#btn-tab-config');
+    await page.fill('#cfg-agency', 'Config Agency');
+    await page.fill('#cfg-fmt-prepnl', 'stt, name, D, L');
+    await page.fill('#cfg-fmt-label-prepnl', 'PNL ngắn');
+    await page.fill('#cfg-fmt-quotation', 'stt, name, D, X');
+    await page.fill('#cfg-tax-PIT', '10');
+    await page.fill('#cfg-focs', 'FOC một\nFOC hai');
+    await page.click('text=Lưu cấu hình >> nth=0');
+    check(await page.evaluate(() => getAgencyConfig().formats.quotation.columns.includes('X')) === false, 'Quotation format with internal cost is refused');
+    await page.fill('#cfg-fmt-quotation', 'stt, name, D');
+    await page.click('text=Lưu cấu hình >> nth=0');
+    const cfg = await page.evaluate(() => getAgencyConfig());
+    check(cfg.agencyName === 'Config Agency' && cfg.tax.PIT === 10 && cfg.formats.prepnl.columns.join() === 'stt,name,D,L' && cfg.focs.length === 2, 'Agency config saved', JSON.stringify({ n: cfg.agencyName, t: cfg.tax, f: cfg.formats.prepnl }));
+    const out = await page.evaluate(() => {
+      window.__clip = ''; copyTextToClipboard = async (t) => { window.__clip = t; };
+      $('pnl-name').value = 'Cfg KOL'; $('pnl-cost').value = '1000000'; $('pnl-tax-type').value = 'PIT'; $('pnl-kpi').value = '1000';
+      const d = refreshCalculations(); savePnlToDb(); copyBulkPnl('prepnl');
+      return { F: d.F, clip: window.__clip, label: document.querySelector('[data-format-label="prepnl"]').textContent, focs: [...document.querySelectorAll('#foc-container input')].map(i => i.value), title: $('brand-title').textContent };
+    });
+    check(Math.round(out.F) === 100000, 'Custom PIT rate used in PNL', out.F);
+    check(out.clip.split('\t').length === 4 && out.clip.startsWith('1\tCfg KOL\t'), 'Custom copy format used', out.clip);
+    check(out.label === 'PNL ngắn' && out.focs.join('|') === 'FOC một|FOC hai' && out.title === 'Config Agency', 'Format label, FOC list and agency name applied in UI', JSON.stringify(out));
+    const suite = await page.evaluate(() => runAutomatedTests({ silent: true }));
+    check(suite.failed === 0, 'In-app tests still pass with a customised agency config', JSON.stringify(suite.results.filter(r => !r.pass)));
+    check(await page.evaluate(() => getAgencyConfig().tax.PIT) === 10, 'In-app tests restore the agency config');
+    await c1.close();
+
+    // Licensing on
+    const { ctx: c2, page: p2 } = await open({ licensing: true });
+    check(/Bản dùng thử: còn 14 ngày/.test(await p2.textContent('#license-banner')) && await p2.isHidden('#license-lock'), 'Trial banner shown on first use');
+    await p2.evaluate(() => localStorage.setItem('miracle_trial_start', new Date(Date.now() - 20 * 86400000).toISOString()));
+    await p2.reload();
+    await p2.waitForFunction(() => window.License);
+    await p2.waitForSelector('#license-lock.flex', { timeout: 5000 });
+    check(/dùng thử đã kết thúc/.test(await p2.textContent('#license-lock-reason')) && /vendor@example.com/.test(await p2.textContent('#license-lock-contact')), 'Expired trial locks the tool and shows vendor contact');
+    const good = issue({ agency: 'Licensed Agency', plan: 'Pro', exp: new Date(Date.now() + 10 * 86400000).toISOString(), domains: ['tool.test'] });
+    const forged = good.split('.')[0].replace(/.$/, c => (c === 'A' ? 'B' : 'A')) + '.' + good.split('.')[1];
+    await p2.fill('#license-lock-key', forged);
+    await p2.click('#license-lock >> text=Kích hoạt');
+    await p2.waitForTimeout(300);
+    check(await p2.isVisible('#license-lock') && /không hợp lệ/.test(await p2.textContent('#license-lock-reason')), 'Tampered license rejected');
+    await p2.fill('#license-lock-key', good);
+    await p2.click('#license-lock >> text=Kích hoạt');
+    await p2.waitForSelector('#license-lock.hidden', { state: 'attached', timeout: 5000 });
+    const lic = await p2.evaluate(() => ({ s: License.status(), name: getAgencyConfig().agencyName }));
+    check(lic.s.valid && lic.name === 'Licensed Agency' && /hết hạn sau 10 ngày/.test(await p2.textContent('#license-banner')), 'Valid license unlocks, sets agency name, warns before expiry', JSON.stringify(lic));
+    for (const [payload, reason, name] of [
+      [{ agency: 'X', exp: new Date(Date.now() - 86400000).toISOString() }, /hết hạn/, 'Expired license locks'],
+      [{ agency: 'X', exp: new Date(Date.now() + 86400000 * 400).toISOString(), domains: ['other-agency.com'] }, /không dùng cho địa chỉ/, 'License bound to another domain is refused'],
+    ]) {
+      await p2.evaluate((k) => License.activate(k), issue(payload));
+      await p2.waitForTimeout(200);
+      check(await p2.isVisible('#license-lock') && reason.test(await p2.textContent('#license-lock-reason')), name, await p2.textContent('#license-lock-reason'));
+    }
+    check(!errors.length, 'No page errors (config/license)', errors.join(' | '));
+    await c2.close();
   }
 
   await browser.close();

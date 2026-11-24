@@ -6,65 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KOC Booking Workspace</title>
     <meta name="description" content="Công cụ cho agency: gợi ý KOC phù hợp theo brief của brand và quản lý toàn bộ quy trình booking.">
-    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <link rel="stylesheet" href="assets/app.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
-    <script>
-        if (window.tailwind) {
-            tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        fontFamily: { sans: ['Inter', 'sans-serif'] },
-                        colors: {
-                            dark: { 900: '#121212', 800: '#1e1e1e', 700: '#2d2d2d', 600: '#3d3d3d' },
-                            brand: { 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed' }
-                        }
-                    }
-                }
-            };
-        }
-    </script>
-    <style type="text/tailwindcss">
-        body { background-color: #121212; color: #f3f4f6; }
-        .glass-panel { background: rgba(30, 30, 30, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #1e1e1e; }
-        ::-webkit-scrollbar-thumb { background: #3d3d3d; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #4d4d4d; }
-        .input-dark { width: 100%; background-color: #121212; border: 1px solid #2d2d2d; border-radius: 0.5rem; padding: 0.625rem 1rem; color: #fff; transition: all 0.2s ease-in-out; }
-        .input-dark:focus { outline: none; border-color: #8b5cf6; box-shadow: 0 0 0 1px #8b5cf6; }
-        .input-dark[readonly] { background-color: #1a1a1a; }
-        .label-dark { display: block; font-size: 0.875rem; font-weight: 500; color: #9ca3af; margin-bottom: 0.375rem; }
-        .btn-primary { padding: 0.625rem 1.25rem; border-radius: 0.5rem; background-color: #7c3aed; color: #fff; font-size: 0.875rem; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.5rem; box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.2); transition: all 0.2s ease-in-out; }
-        .btn-primary:hover { background-color: #8b5cf6; cursor: pointer; }
-        .btn-primary:disabled { opacity: 0.6; cursor: wait; }
-        .btn-secondary { padding: 0.625rem 1.25rem; border-radius: 0.5rem; background-color: #2d2d2d; border: 1px solid #3d3d3d; color: #fff; font-size: 0.875rem; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s ease-in-out; }
-        .btn-secondary:hover { background-color: #3d3d3d; cursor: pointer; }
-        .btn-success { padding: 0.625rem 1.25rem; border-radius: 0.5rem; background-color: #047857; color: #fff; font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s ease-in-out; }
-        .btn-success:hover { background-color: #059669; cursor: pointer; }
-        .card { background-color: #1e1e1e; border: 1px solid #1e1e1e; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); }
-
-        .data-table { width: 100%; border-collapse: separate; border-spacing: 0; background-color: #121212; }
-        .data-table th { background-color: #1a1a1a; color: #9ca3af; font-weight: 500; text-transform: uppercase; font-size: 0.75rem; padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #2d2d2d; white-space: nowrap; }
-        .data-table td { padding: 0.75rem 1rem; color: #e5e7eb; font-size: 0.875rem; border-bottom: 1px solid #2d2d2d; }
-        .data-table tr:last-child td { border-bottom: none; }
-        .data-table tr:hover td { background-color: #1c1c1c; }
-
-        .prose, .prose p { color: #f3f4f6; }
-        .prose p + p { margin-top: 0.75rem; }
-        .prose strong { color: #fff; }
-        .prose ul { list-style: disc; padding-left: 1.25rem; }
-        .prose ol { list-style: decimal; padding-left: 1.25rem; }
-
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .toast { animation: slideIn 0.3s forwards; transition: all 0.3s; max-width: 24rem; }
-    </style>
+    <script src="assets/vendor/marked.min.js"></script>
+    <script src="assets/vendor/purify.min.js"></script>
 </head>
 
 <body class="h-screen flex overflow-hidden selection:bg-brand-500 selection:text-white">
@@ -94,7 +40,7 @@
                 class="w-full btn-secondary !bg-purple-900/30 hover:!bg-purple-900/50 text-purple-400 font-bold border border-purple-800">
                 <i class="fas fa-magic"></i> Magic Bookmarklet
             </button>
-            <button onclick="window.open('miracle-guide.html', '_blank')"
+            <button onclick="window.open('guide.html', '_blank')"
                 class="w-full btn-primary !bg-blue-600 hover:!bg-blue-500">
                 <i class="fas fa-book-open"></i> Hướng dẫn sử dụng
             </button>
@@ -106,6 +52,7 @@
 
     <!-- Main Content -->
     <main id="main-scroll" class="flex-1 overflow-y-auto bg-dark-900 relative pt-14 md:pt-0">
+        <div id="license-banner" class="hidden sticky top-0 z-20 px-4 py-2 text-sm text-center bg-yellow-900/80 text-yellow-200 border-b border-yellow-700"></div>
         <div class="max-w-4xl mx-auto p-4 md:p-8 pb-24" id="main-content">
 
             <!-- TAB: brief -->
@@ -115,6 +62,8 @@
                     <p class="text-gray-400">Dán brief của brand, tool chấm điểm từng KOC trong Kho KOC và đề xuất
                         shortlist vừa ngân sách.</p>
                 </div>
+
+                <div id="onboarding"></div>
 
                 <div id="brief-empty-db"
                     class="hidden p-4 rounded-xl bg-yellow-900/20 border border-yellow-700/40 text-yellow-300 text-sm flex flex-wrap gap-3 items-center justify-between">
@@ -336,6 +285,9 @@
                 </div>
             </div>
 
+            <!-- TAB: config (rendered by assets/config.js) -->
+            <div id="tab-config" class="tab-content space-y-6"></div>
+
             <!-- TAB: scouting -->
             <div id="tab-scouting" class="tab-content space-y-6">
                 <div class="mb-8">
@@ -380,38 +332,7 @@
                 <div class="card">
                     <h3 class="text-lg font-semibold mb-4 text-white"><i
                             class="fas fa-check-square text-green-400 mr-2"></i>Quyền lợi miễn phí (FOC)</h3>
-                    <div class="space-y-3" id="foc-container">
-                        <label class="flex items-center space-x-3 cursor-pointer group">
-                            <input type="checkbox" value="Miễn phí cung cấp mã Code Ads 7 ngày (Bắt buộc TikTok)"
-                                class="w-5 h-5 rounded border-gray-600 text-brand-500 focus:ring-brand-500 bg-dark-900">
-                            <span class="text-gray-300 group-hover:text-white transition-colors">Miễn phí cung cấp mã
-                                Code Ads 7 ngày (Bắt buộc TikTok)</span>
-                        </label>
-                        <label class="flex items-center space-x-3 cursor-pointer group">
-                            <input type="checkbox" value="Miễn phí SDHA 1 tháng"
-                                class="w-5 h-5 rounded border-gray-600 text-brand-500 focus:ring-brand-500 bg-dark-900">
-                            <span class="text-gray-300 group-hover:text-white transition-colors">Miễn phí SDHA 1
-                                tháng</span>
-                        </label>
-                        <label class="flex items-center space-x-3 cursor-pointer group">
-                            <input type="checkbox" value="Miễn phí ghim bài 5 ngày"
-                                class="w-5 h-5 rounded border-gray-600 text-brand-500 focus:ring-brand-500 bg-dark-900">
-                            <span class="text-gray-300 group-hover:text-white transition-colors">Miễn phí ghim bài 5
-                                ngày</span>
-                        </label>
-                        <label class="flex items-center space-x-3 cursor-pointer group">
-                            <input type="checkbox" value="Miễn phí cung cấp clip gốc không chữ"
-                                class="w-5 h-5 rounded border-gray-600 text-brand-500 focus:ring-brand-500 bg-dark-900">
-                            <span class="text-gray-300 group-hover:text-white transition-colors">Miễn phí cung cấp clip
-                                gốc không chữ</span>
-                        </label>
-                        <label class="flex items-center space-x-3 cursor-pointer group">
-                            <input type="checkbox" value="Miễn phí Đăng lại (Reup) qua FB Reels/Threads"
-                                class="w-5 h-5 rounded border-gray-600 text-brand-500 focus:ring-brand-500 bg-dark-900">
-                            <span class="text-gray-300 group-hover:text-white transition-colors">Miễn phí Đăng lại
-                                (Reup) qua FB Reels/Threads</span>
-                        </label>
-                    </div>
+                    <div class="space-y-3" id="foc-container"></div>
                     <p class="text-xs text-gray-500 mt-3">Các quyền lợi đã chọn cũng được ghi kèm vào cột Scope khi
                         lưu PNL.</p>
                 </div>
@@ -751,13 +672,13 @@ Ngày on-air: []</textarea>
                                     class="fas fa-trash"></i> Xóa hết</button>
                             <button onclick="copyBulkPnl('prepnl')"
                                 class="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 transition-colors text-sm text-white"><i
-                                    class="fas fa-copy"></i> PRE PNL</button>
+                                    class="fas fa-copy"></i> <span data-format-label="prepnl">PRE PNL</span></button>
                             <button onclick="copyBulkPnl('nblist')"
                                 class="px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm text-white"><i
-                                    class="fas fa-copy"></i> NB LIST</button>
+                                    class="fas fa-copy"></i> <span data-format-label="nblist">NB LIST</span></button>
                             <button onclick="copyBulkPnl('quotation')"
                                 class="px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm text-white"
-                                title="Không có giá nội bộ"><i class="fas fa-copy"></i> Báo giá EXT</button>
+                                title="Không có giá nội bộ"><i class="fas fa-copy"></i> <span data-format-label="quotation">Báo giá EXT</span></button>
                         </div>
                     </div>
 
@@ -833,20 +754,31 @@ Ngày on-air: []</textarea>
         </div>
     </main>
 
+    <!-- License lock (only when licensing is enabled and there is no valid license after the trial) -->
+    <div id="license-lock" class="hidden fixed inset-0 z-[55] bg-black/90 items-center justify-center p-4">
+        <div class="bg-dark-800 border border-gray-700 rounded-xl max-w-lg w-full p-6 space-y-4">
+            <h2 class="text-xl font-semibold text-white"><i class="fas fa-key text-yellow-400 mr-2"></i>Cần bản quyền để tiếp tục</h2>
+            <p id="license-lock-reason" class="text-gray-300"></p>
+            <p id="license-lock-contact" class="text-sm text-gray-400"></p>
+            <textarea id="license-lock-key" class="input-dark h-24 font-mono text-xs" placeholder="Dán mã bản quyền"></textarea>
+            <div class="flex flex-wrap gap-2 justify-end">
+                <button onclick="exportBackup()" class="btn-secondary"><i class="fas fa-download"></i> Tải dữ liệu về (sao lưu)</button>
+                <button onclick="License.activate(document.getElementById('license-lock-key').value)" class="btn-primary"><i class="fas fa-unlock"></i> Kích hoạt</button>
+            </div>
+            <p class="text-xs text-gray-500">Dữ liệu của bạn vẫn nằm nguyên trên trình duyệt / Google Sheet của agency.</p>
+        </div>
+    </div>
+
     <!-- Toast Container -->
-    <div id="toast-container" class="fixed bottom-5 right-5 flex flex-col gap-3 z-[60]" aria-live="polite"></div>
+    <div id="toast-container" class="fixed bottom-5 right-5 flex flex-col gap-3 z-[60] pointer-events-none" aria-live="polite"></div>
 
     <!-- Settings Modal -->
     <div id="settings-modal" onclick="if(event.target===this)closeModal('settings')"
         class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-300 p-4">
         <div class="bg-dark-800 border border-gray-700 rounded-xl max-w-lg w-full p-6 shadow-2xl scale-95 transition-transform duration-300 transform max-h-full overflow-y-auto"
             id="settings-panel">
-            <h2 class="text-xl font-semibold mb-4 text-white"><i class="fas fa-cog text-brand-500 mr-2"></i>Cài đặt
+            <h2 class="text-xl font-semibold mb-4 text-white"><i class="fas fa-cog text-brand-500 mr-2"></i>Cài đặt cá nhân
             </h2>
-
-            <label class="label-dark" for="agency-name">Tên agency</label>
-            <input type="text" id="agency-name" class="input-dark mb-1" placeholder="VD: ABC Media">
-            <p class="text-xs text-gray-500 mb-4">Dùng trong tin nhắn gửi KOC và tiêu đề menu.</p>
 
             <label class="label-dark" for="gemini-api-key">Gemini API Key</label>
             <input type="password" id="gemini-api-key" placeholder="AIzaSy..." class="input-dark mb-1"
@@ -866,7 +798,7 @@ Ngày on-air: []</textarea>
             <div class="border-t border-gray-700 pt-4 mt-2 mb-4">
                 <div class="flex items-center justify-between mb-2">
                     <span class="font-semibold text-white"><i class="fas fa-cloud text-green-400 mr-2"></i>Đồng bộ Google Sheets (dùng chung cả team)</span>
-                    <a href="miracle-guide.html#sync" target="_blank" class="text-xs underline text-gray-400 hover:text-gray-200">Hướng dẫn cài đặt</a>
+                    <a href="guide.html#sync" target="_blank" class="text-xs underline text-gray-400 hover:text-gray-200">Hướng dẫn cài đặt</a>
                 </div>
                 <label class="label-dark" for="sync-url">Web App URL (Apps Script)</label>
                 <input type="url" id="sync-url" class="input-dark mb-2 text-xs font-mono" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
@@ -1032,6 +964,9 @@ Ngày on-air: []</textarea>
 
     <script src="assets/matcher.js"></script>
     <script src="assets/app.js"></script>
+    <script src="assets/config.js"></script>
+    <script src="assets/license-key.js"></script>
+    <script src="assets/license.js"></script>
     <script src="assets/koc.js"></script>
     <script src="assets/grab.js"></script>
     <script src="assets/sync.js"></script>

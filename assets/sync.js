@@ -64,6 +64,14 @@ window.Sync = (() => {
                 scope: pick(row, 'Hạng mục công việc'), paymentTerm: pick(row, 'Payment term'),
             }),
         },
+        config: {
+            label: 'Cấu hình',
+            list: () => { const c = getAgencyConfig(); return c.updatedAt || safeStorage.get(CONFIG_KEY, null) ? [c] : []; },
+            replace: (list) => { if (list[0]) setAgencyConfig(list[0], { track: false }); },
+            columns: [['Mục', () => 'Cấu hình agency (sửa trong tool)'], ['Tên agency', c => c.agencyName], ['Margin mặc định (%)', c => c.pricing.pct],
+                ['Giảm giá (%)', c => c.pricing.discountPct], ['Phí CB (%)', c => c.pricing.cbPct]],
+            fromSheet: (data, row) => normalizeAgencyConfig({ ...(data || {}), agencyName: pick(row, 'Tên agency') || (data || {}).agencyName || '' }),
+        },
         reports: {
             label: 'Báo cáo tuần',
             list: () => savedReports,
@@ -78,7 +86,7 @@ window.Sync = (() => {
         },
     };
     // Columns stored as plain text in the Sheet (keeps leading zeros of phone numbers, "18–24", links...)
-    const TEXT_COLUMNS = {kocs: ["Tên", "Nền tảng", "Link", "Contact", "Nhóm / Ngành", "Giới tính khán giả", "Độ tuổi khán giả", "Khu vực", "Loại thuế", "Hạng mục công việc", "Payment term", "Trạng thái", "Ghi chú"], blacklist: ["Tên", "Link", "Dự án", "Lý do"], pnl: ["Tên", "Contact", "Link kênh", "Followers", "Hạng mục công việc", "Đơn vị tính", "Loại thuế (Y)", "Nền tảng", "Payment term"], reports: ["Client", "Campaign", "Status", "Margin Before", "Margin After", "Kết quả", "Lỗi sai"]};
+    const TEXT_COLUMNS = {config: ["Mục", "Tên agency"], kocs: ["Tên", "Nền tảng", "Link", "Contact", "Nhóm / Ngành", "Giới tính khán giả", "Độ tuổi khán giả", "Khu vực", "Loại thuế", "Hạng mục công việc", "Payment term", "Trạng thái", "Ghi chú"], blacklist: ["Tên", "Link", "Dự án", "Lý do"], pnl: ["Tên", "Contact", "Link kênh", "Followers", "Hạng mục công việc", "Đơn vị tính", "Loại thuế (Y)", "Nền tảng", "Payment term"], reports: ["Client", "Campaign", "Status", "Margin Before", "Margin After", "Kết quả", "Lỗi sai"]};
     const NAMES = Object.keys(COLLECTIONS);
 
     // ---- Persistent sync state ----
@@ -245,6 +253,8 @@ window.Sync = (() => {
         try { renderDbTables(); } catch (e) { }
         try { refreshBriefEmptyState(); } catch (e) { }
         try { checkBlacklist(); } catch (e) { }
+        try { if (currentTabId === 'config') renderConfigTab(); } catch (e) { }
+        try { renderOnboarding(); } catch (e) { }
     };
 
     /** Pull, merge, then push local changes. */

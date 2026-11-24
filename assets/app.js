@@ -10,6 +10,7 @@ const TABS = [
     { id: 'confirm', name: 'Confirm Booking', icon: 'fa-handshake', group: 'Booking' },
     { id: 'report', name: 'Weekly Report', icon: 'fa-chart-pie', group: 'Quản lý' },
     { id: 'db', name: 'Kho PNL & Báo cáo', icon: 'fa-database', group: 'Quản lý' },
+    { id: 'config', name: 'Cấu hình agency', icon: 'fa-sliders', group: 'Quản lý' },
 ];
 
 const STORAGE = {
@@ -21,8 +22,9 @@ const STORAGE = {
     extMode: 'miracle_ext_mode',
     extPercent: 'miracle_ext_percent',
     agency: 'miracle_agency_name',
-    blacklistMigrated: 'miracle_blacklist_migrated',
     kocs: 'miracle_kocs',
+    agencyConfig: 'miracle_agency_config',
+    trial: 'miracle_trial_start',
     blacklistV2: 'miracle_blacklist_v2',
     pricing: 'miracle_pricing_v2',
     sync: 'miracle_sync_config',
@@ -32,9 +34,6 @@ const STORAGE = {
 };
 const DEFAULT_MODEL = 'gemini-2.5-flash';
 
-// Blacklist that used to be hard-coded. It is moved once into the editable agency blacklist
-// so existing users keep it, while new agencies start with an empty list.
-const LEGACY_BLACKLIST = ["Hoàng Bảo Long", "muoibiennn ✿", "Chây Xì Dách", "Lang Thang Cần Thơ", "Sang Blu", "A ri é", "Thaomoon đi đâu đấy", "người đẹp té giếng", "Kenz Nguyễn", "Mr Xuân Hoàn", "Trang Rita", "Elmich"];
 
 
 const INDUSTRY_HINTS = {
@@ -121,7 +120,8 @@ let showToast = (msg, type = 'success') => {
     const el = document.createElement('div');
     const color = type === 'success' ? 'bg-green-900/90 border-green-500' : type === 'error' ? 'bg-red-900/90 border-red-500' : 'bg-blue-900/90 border-blue-500';
     const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
-    el.className = `toast px-4 py-3 rounded-lg shadow-lg text-white font-medium flex items-center gap-2 border ${color}`;
+    el.className = `toast px-3 py-2 rounded-lg shadow-lg text-white text-sm flex items-center gap-2 border ${color}`;
+    while (container.children.length >= 3) container.firstElementChild.remove(); // keep at most 3 on screen
     el.innerHTML = `<i class="fas ${icon}"></i> <span></span>`;
     el.querySelector('span').textContent = msg;
     container.appendChild(el);
@@ -147,8 +147,7 @@ const renderSidebar = () => {
             ${t.id === 'kocs' ? '<span id="koc-count" class="ml-auto text-xs bg-dark-700 text-gray-300 px-2 py-0.5 rounded-full">0</span>' : ''}
         </button>`;
     }).join('');
-    const agencyName = (safeStorage.get(STORAGE.agency, '') || '').trim();
-    $('brand-title').textContent = agencyName || 'KOC Booking';
+    $('brand-title').textContent = rawAgencyName() || 'KOC Booking';
 };
 
 const toggleSidebar = (force) => {
@@ -177,6 +176,7 @@ const switchTab = (id) => {
     currentTabId = id;
     refreshCalculations();
     toggleSidebar(false);
+    if (id === 'config' && typeof renderConfigTab === 'function') renderConfigTab();
     if (typeof window.onTabShown === 'function') window.onTabShown(id);
     $('main-scroll')?.scrollTo(0, 0);
     try { history.replaceState(null, '', '#' + id); } catch (e) { }
@@ -186,7 +186,6 @@ const openModal = (name) => {
     if (name === 'settings') {
         $('gemini-api-key').value = safeStorage.get(STORAGE.apiKey, '');
         $('gemini-model').value = safeStorage.get(STORAGE.model, DEFAULT_MODEL);
-        $('agency-name').value = safeStorage.get(STORAGE.agency, '');
         if (window.Sync) Sync.fillSettings();
     }
     if (name === 'bookmarklet') setupBookmarklet();
@@ -203,7 +202,8 @@ const closeModal = (name) => {
     const p = $(`${name}-panel`);
     m.classList.add('opacity-0');
     p.classList.add('scale-95');
-    setTimeout(() => { m.classList.add('hidden'); m.classList.remove('flex'); }, 300);
+    // only hide if it was not reopened during the fade-out
+    setTimeout(() => { if (m.classList.contains('opacity-0')) { m.classList.add('hidden'); m.classList.remove('flex'); } }, 300);
 };
 
 const saveSettings = () => {
@@ -211,7 +211,6 @@ const saveSettings = () => {
     const model = $('gemini-model').value.trim() || DEFAULT_MODEL;
     if (key) safeStorage.set(STORAGE.apiKey, key); else safeStorage.remove(STORAGE.apiKey);
     safeStorage.set(STORAGE.model, model);
-    safeStorage.set(STORAGE.agency, $('agency-name').value.trim());
     if (window.Sync) Sync.saveSettings();
     renderSidebar();
     switchTab(currentTabId);
@@ -279,17 +278,8 @@ const getCustomBlacklist = () => {
     const list = safeStorage.getJSON(STORAGE.blacklist, []);
     return Array.isArray(list) ? list : [];
 };
-const migrateLegacyData = () => {
-    if (safeStorage.get(STORAGE.blacklistMigrated, null)) return;
-    const hadLegacyData = safeStorage.get(STORAGE.pnl, null) !== null || safeStorage.get(STORAGE.apiKey, null) !== null || safeStorage.get(STORAGE.reports, null) !== null;
-    if (hadLegacyData) {
-        const merged = Array.from(new Set(getCustomBlacklist().concat(LEGACY_BLACKLIST)));
-        safeStorage.set(STORAGE.blacklist, JSON.stringify(merged));
-        if (!safeStorage.get(STORAGE.agency, '')) safeStorage.set(STORAGE.agency, 'The Miracle');
-    }
-    safeStorage.set(STORAGE.blacklistMigrated, '1');
-};
-const getAgencyName = () => (safeStorage.get(STORAGE.agency, '') || '').trim() || 'agency bên mình';
+const rawAgencyName = () => ((typeof getAgencyConfig === 'function' ? getAgencyConfig().agencyName : '') || safeStorage.get(STORAGE.agency, '') || '').trim();
+const getAgencyName = () => rawAgencyName() || 'agency bên mình';
 // Blacklist entries: { id, name, link, project, reason, updatedAt }
 let blacklistCache = null;
 const getBlacklistEntries = () => {
@@ -420,8 +410,9 @@ MUST START WITH: 'Dear team, My name is ${so}, Booking Specialist at ${agency}. 
     const btn = $('btn-xingia');
     const label = btn.innerHTML;
     setBusy(btn, true);
+    const customScouting = lang === 'vi' ? getAgencyConfig().templates.scouting : '';
     const { text } = await generateWithFallback(prompt, () =>
-        fillTemplate(pickRandom(lang === 'vi' ? FALLBACK_TEMPLATES.scouting : FALLBACK_TEMPLATES.scoutingEn),
+        fillTemplate(customScouting || pickRandom(lang === 'vi' ? FALLBACK_TEMPLATES.scouting : FALLBACK_TEMPLATES.scoutingEn),
             { soName: so, brand, scope, budget: bdg, focs: selectedFOCs, agency }));
     setBusy(btn, false, label);
     $('res-xingia-container').classList.remove('hidden');
@@ -467,7 +458,7 @@ const calculatePnl = () => refreshCalculations();
 const calculateExt = () => refreshCalculations().D;
 
 const BACKUP_RULE_TEXT = (plat) => {
-    const r = KocMatcher.BACKUP_RATES[plat] || {};
+    const r = KocMatcher.getRates().backup[plat] || {};
     const parts = [];
     if (r.view) parts.push(`KPI View × ${String(r.view).replace('.', ',')}`);
     if (r.eng) parts.push(`KPI Engagement × ${r.eng}`);
@@ -504,7 +495,7 @@ const refreshCalculations = () => {
 
 const loadPricingSettings = () => {
     const p = safeStorage.getJSON(STORAGE.pricing, null) || {};
-    const D = KocMatcher.PRICING_DEFAULTS;
+    const D = typeof getAgencyConfig === 'function' ? getAgencyConfig().pricing : KocMatcher.PRICING_DEFAULTS;
     $('ext-mode').value = ['margin', 'markup', 'manual'].includes(p.mode) ? p.mode : D.mode;
     $('ext-percent').value = p.pct ?? D.pct;
     $('ext-discount').value = p.discountPct ?? D.discountPct;
@@ -532,19 +523,8 @@ const upgradePnlRecord = (p) => {
     return r;
 };
 
-const PNL_FORMATS = {
-    // Sheet "PRE PNL" (25 columns)
-    prepnl: (p, stt) => [stt, p.name, p.contact, p.link, fmtFollowers(p.followers), p.scope, formatMoney(p.A), p.B, p.unit || 'Video', formatMoney(p.C), formatMoney(p.D),
-        formatMoney(p.X), p.O, formatMoney(p.E), formatMoney(p.F), formatMoney(p.G), formatMoney(p.H), formatMoney(p.M), formatMoney(p.K), fmtPct(p.L), p.taxType,
-        p.kpiView ? formatMoney(p.kpiView) : '', p.CPV ? formatMoney(p.CPV) : '', p.kpiEng ? formatMoney(p.kpiEng) : '', p.CPE ? formatMoney(p.CPE) : ''],
-    // Sheet "NB LIST" of the internal workfile (22 columns)
-    nblist: (p, stt) => [stt, p.name, p.link, fmtFollowers(p.followers), p.contact, '', p.scope, formatMoney(p.A), p.B, p.unit || 'Video', formatMoney(p.D),
-        formatMoney(p.X), p.O, formatMoney(p.E), formatMoney(p.F), formatMoney(p.G), formatMoney(p.H), formatMoney(p.K), fmtPct(p.L), p.taxType, p.paymentTerm || '', p.note || ''],
-    // Booking quotation sent to the client: no internal numbers (14 columns)
-    quotation: (p, stt) => [stt, p.name, fmtFollowers(p.followers), p.scope, formatMoney(p.A), p.unit || 'Video', p.B, formatMoney(p.C), formatMoney(p.D),
-        p.kpiView ? formatMoney(p.kpiView) : '', p.CPV ? formatMoney(p.CPV) : '', p.kpiEng ? formatMoney(p.kpiEng) : '', p.CPE ? formatMoney(p.CPE) : '', p.note || ''],
-};
-const buildPnlCells = (p, stt, format = 'prepnl') => PNL_FORMATS[format](upgradePnlRecord(p), stt);
+// Column order of each copy format comes from the agency configuration (assets/config.js)
+const buildPnlCells = (p, stt, format = 'prepnl') => buildFormatRow(upgradePnlRecord(p), stt, format);
 
 const getPnlRowData = () => {
     const d = computeDeal();
@@ -616,8 +596,9 @@ const generateDealCast = async () => {
     const btn = $('btn-dealcast');
     const label = btn.innerHTML;
     setBusy(btn, true);
+    const customNego = lang === 'vi' ? getAgencyConfig().templates.negotiating : '';
     const { text } = await generateWithFallback(prompt, () =>
-        fillTemplate(pickRandom(lang === 'vi' ? FALLBACK_TEMPLATES.negotiating : FALLBACK_TEMPLATES.negotiatingEn), { limitCost: limit, scope }));
+        fillTemplate(customNego || pickRandom(lang === 'vi' ? FALLBACK_TEMPLATES.negotiating : FALLBACK_TEMPLATES.negotiatingEn), { limitCost: limit, scope, agency: getAgencyName() }));
     setBusy(btn, false, label);
     $('res-dealcast-container').classList.remove('hidden');
     renderMarkdown($('res-dealcast'), text);
@@ -698,7 +679,10 @@ const renderDbTables = () => {
     const totalK = rows.reduce((s, p) => s + (Number(p.K) || 0), 0);
     $('stat-total-koc').textContent = rows.length;
     $('stat-total-revenue').textContent = formatMoney(totalD) + ' ₫';
-    $('stat-total-vat').textContent = totalD ? `VAT 8%: ${formatMoney(totalD * 0.08)} · Gồm VAT: ${formatMoney(totalD * 1.08)}` : '';
+    const q = getAgencyConfig().quotation;
+    const fee = totalD * (q.agencyFeePct || 0) / 100;
+    const vat = (totalD + fee) * (q.vatPct || 0) / 100;
+    $('stat-total-vat').textContent = totalD ? `${fee ? `Agency fee ${+q.agencyFeePct}%: ${formatMoney(fee)} · ` : ''}VAT ${+q.vatPct}%: ${formatMoney(vat)} · Gồm VAT: ${formatMoney(totalD + fee + vat)}` : '';
     $('stat-total-margin').textContent = formatMoney(totalK) + ' ₫';
     $('stat-avg-margin').textContent = totalD > 0 ? `Margin: ${fmtPct(totalK / totalD)}` : '';
 
@@ -727,12 +711,13 @@ const deleteRow = (type, index) => {
     renderDbTables();
 };
 
-const PNL_FORMAT_LABEL = { prepnl: 'PRE PNL (25 cột)', nblist: 'NB LIST', quotation: 'báo giá EXT' };
 const copyBulkPnl = (format = 'prepnl') => {
     if (!savedPNL.length) return showToast('Chưa có dữ liệu để copy', 'error');
+    const cfg = getAgencyConfig();
     const rows = savedPNL.map((p, i) => toTsvRow(buildPnlCells(p, i + 1, format)));
+    if (cfg.copyHeader) rows.unshift(toTsvRow(formatHeaderRow(format)));
     copyTextToClipboard(rows.join('\n'));
-    showToast(`Đã copy ${savedPNL.length} dòng ${PNL_FORMAT_LABEL[format]}`);
+    showToast(`Đã copy ${savedPNL.length} dòng ${cfg.formats[format].label} (${cfg.formats[format].columns.length} cột)`);
 };
 
 const copyBulkReports = () => {
@@ -754,7 +739,7 @@ const exportBackup = () => {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `miracle-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `koc-workspace-backup-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
@@ -792,11 +777,13 @@ const importBackup = (event) => {
 
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', () => {
-    migrateLegacyData();
     savedPNL = savedPNL.map(upgradePnlRecord);
     savedReports = savedReports.map(withId('r'));
+    KocMatcher.configureRates((({ tax, cbTaxPct, backup }) => ({ tax, cbTaxPct, backup }))(getAgencyConfig()));
+    renderFocs();
     renderSidebar();
     loadPricingSettings();
+    applyAgencyConfig();
 
     document.querySelectorAll('.money-input').forEach(el => el.addEventListener('blur', (e) => { formatInputOnBlur(e); refreshCalculations(); }));
     $('pnl-followers').addEventListener('blur', (e) => {
@@ -844,21 +831,22 @@ window.runAutomatedTests = async ({ silent = false } = {}) => {
     window.confirm = () => true;
     savedPNL = [];
     savedReports = [];
+    // tests run against the default formulas/formats, whatever this agency configured
+    setAgencyConfig({ ...DEFAULT_AGENCY_CONFIG(), agencyName: 'Demo Agency' }, { track: false });
     const set = (id, v) => { $(id).value = v; };
 
     try {
         // TEST 1: Blacklist (name or link)
-        setBlacklistEntries([{ name: 'Sang Blu', link: 'https://www.tiktok.com/@sangblu.demo', reason: 'Không hợp tác' }, { name: 'Kenz Nguyễn', link: '' }].map(KocMatcher.normalizeBlacklistEntry), { track: false });
-        safeStorage.set(STORAGE.agency, 'The Miracle');
-        set('blacklist-input', 'Sang Blu');
+        setBlacklistEntries([{ name: 'Demo Blocked', link: 'https://www.tiktok.com/@demo.blocked', reason: 'Không hợp tác' }, { name: 'Demo Second', link: '' }].map(KocMatcher.normalizeBlacklistEntry), { track: false });
+        set('blacklist-input', 'Demo Blocked');
         assert(checkBlacklist() && $('blacklist-match').textContent.includes('Không hợp tác'), 'T1A Blacklist hit with reason', $('blacklist-match').textContent);
         set('blacklist-input', 'Tiến Mạnh');
         assert(!checkBlacklist(), 'T1B Blacklist miss', 'Tiến Mạnh should be safe');
         set('blacklist-input', 'a');
         assert(!checkBlacklist(), 'T1C No false positive on short input', '"a" should not match');
-        set('blacklist-input', '  SANG   BLU review ');
+        set('blacklist-input', '  DEMO   BLOCKED review ');
         assert(checkBlacklist(), 'T1D Case/space insensitive', 'should match normalized name');
-        assert(!!findBlacklisted('Tên khác', 'https://www.tiktok.com/@SangBlu.demo?lang=vi'), 'T1E Match by channel link even if renamed', 'link match');
+        assert(!!findBlacklisted('Tên khác', 'https://www.tiktok.com/@Demo.Blocked?lang=vi'), 'T1E Match by channel link even if renamed', 'link match');
 
         // TEST 2: Number parsing
         assert(parseNumber('10.000.000') === 10000000, 'T2A parse 10.000.000', String(parseNumber('10.000.000')));
@@ -927,7 +915,7 @@ window.runAutomatedTests = async ({ silent = false } = {}) => {
         safeStorage.set(STORAGE.apiKey, 'test_key');
         safeStorage.set(STORAGE.model, DEFAULT_MODEL);
         await generateXinGia();
-        assert(capturedPrompt.includes("Dạ chào anh/chị, mình là Tester - Chuyên viên Booking của The Miracle. Hiện tại bên mình đang tìm kiếm đối tác cho dự án của nhãn hàng BrandX."), 'T6A Mandatory opening', capturedPrompt);
+        assert(capturedPrompt.includes("Dạ chào anh/chị, mình là Tester - Chuyên viên Booking của Demo Agency. Hiện tại bên mình đang tìm kiếm đối tác cho dự án của nhãn hàng BrandX."), 'T6A Mandatory opening', capturedPrompt);
         assert(capturedPrompt.includes('Miễn phí cung cấp mã Code Ads 7 ngày (Bắt buộc TikTok)') && capturedPrompt.includes('Miễn phí SDHA 1 tháng'), 'T6B FOCs in prompt', capturedPrompt);
         assert(!capturedUrl.includes('test_key') && capturedHeaders['x-goog-api-key'] === 'test_key', 'T6C API key sent in header, not URL', capturedUrl);
         assert($('res-xingia').textContent.includes('Mock LLM Response'), 'T6D Response rendered', $('res-xingia').textContent);
@@ -983,6 +971,8 @@ window.runAutomatedTests = async ({ silent = false } = {}) => {
         savedReports = repSnap;
         storageSnap.forEach(([k, v]) => { if (v === null) safeStorage.remove(k); else safeStorage.set(k, v); });
         blacklistCache = null;
+        invalidateAgencyConfig();
+        applyAgencyConfig();
         fieldSnap.forEach(([el, v]) => { if (el.type === 'checkbox') el.checked = v; else el.value = v; });
         focSnap.forEach(([el, v]) => { el.checked = v; });
         $('res-xingia-container').classList.add('hidden');

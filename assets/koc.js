@@ -192,7 +192,7 @@ const clearKocs = () => {
 };
 
 // ================= IMPORT (paste / CSV / .xlsx, with column mapping) =================
-const XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+const XLSX_SRC = 'assets/vendor/xlsx.full.min.js'; // loaded only when a workbook is imported
 let importState = { rows: null, sheets: null, workbook: null, fields: null, table: null };
 
 const loadScriptOnce = (src) => new Promise((resolve, reject) => {
@@ -714,7 +714,7 @@ const refreshBriefEmptyState = () => $('brief-empty-db').classList.toggle('hidde
 
 window.onTabShown = (id) => {
     if (id === 'kocs') { renderKocTable(); renderBlacklistTable(); }
-    if (id === 'brief') { refreshBriefEmptyState(); if (lastRanking) runMatch({ silent: true }); }
+    if (id === 'brief') { refreshBriefEmptyState(); renderOnboarding(); if (lastRanking) runMatch({ silent: true }); }
 };
 
 document.addEventListener('DOMContentLoaded', () => {

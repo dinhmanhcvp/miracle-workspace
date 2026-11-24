@@ -124,10 +124,8 @@
     // Internal: E = X × O ; F = tax(E) ; G (phí giới thiệu / CB) = D × cb% ; H = G / 9 ; M = backup
     // K (lợi nhuận gộp) = D − E − F − G − H − M ; L (margin) = K / D
     const TAX_TYPES = ['PIT', 'VAT', 'HKD'];
-    const taxExact = (amount, taxType) => taxType === 'PIT' ? amount / 9 : (taxType === 'HKD' ? amount * 0.07 : 0);
-    const calcTax = (cost, taxType) => Math.round(taxExact(cost, taxType));
-
-    // Cost backup per committed KPI unit (sheet "COMMIT KPI")
+    // Default rates (configurable per agency with configureRates):
+    // booking tax as % of E (PIT = E / 9), tax on CB as % of G (H = G / 9), cost backup per committed KPI unit
     const BACKUP_RATES = {
         TikTok: { view: 3.5, eng: 0 },
         FB: { view: 15, eng: 35 },
@@ -135,8 +133,23 @@
         Threads: { view: 0, eng: 700 },
         Instagram: { view: 15, eng: 0 },
     };
+    const DEFAULT_RATES = { tax: { PIT: 100 / 9, VAT: 0, HKD: 7 }, cbTaxPct: 100 / 9, backup: BACKUP_RATES };
+    const cloneRates = (r) => JSON.parse(JSON.stringify(r));
+    let RATES = cloneRates(DEFAULT_RATES);
+    const finite = (v, d) => (typeof v === 'number' && isFinite(v) && v >= 0 ? v : d);
+    const configureRates = (r = {}) => {
+        const d = DEFAULT_RATES;
+        const tax = {}; TAX_TYPES.forEach(t => { tax[t] = finite(r.tax && r.tax[t], d.tax[t]); });
+        const backup = {};
+        Object.keys(d.backup).forEach(p => { const x = (r.backup && r.backup[p]) || {}; backup[p] = { view: finite(x.view, d.backup[p].view), eng: finite(x.eng, d.backup[p].eng) }; });
+        RATES = { tax, cbTaxPct: finite(r.cbTaxPct, d.cbTaxPct), backup };
+        return getRates();
+    };
+    const getRates = () => cloneRates(RATES);
+    const taxExact = (amount, taxType) => amount * (RATES.tax[taxType] || 0) / 100;
+    const calcTax = (cost, taxType) => Math.round(taxExact(cost, taxType));
     const calcBackup = (platform, kpiView, kpiEng) => {
-        const r = BACKUP_RATES[platform] || { view: 0, eng: 0 };
+        const r = RATES.backup[platform] || { view: 0, eng: 0 };
         return (Number(kpiView) || 0) * r.view + (Number(kpiEng) || 0) * r.eng;
     };
 
@@ -154,7 +167,7 @@
         const E = X * O;
         const F = taxExact(E, i.taxType);
         const G = D * cbPct / 100;
-        const H = G / 9;
+        const H = G * RATES.cbTaxPct / 100;
         const M = i.backup !== undefined && i.backup !== null && i.backup !== '' ? num0(i.backup) : calcBackup(i.platform, view, eng);
         const K = D - E - F - G - H - M;
         const L = D ? K / D : 0;
@@ -176,7 +189,7 @@
         let D;
         if (o.mode === 'markup') D = cost * (1 + (Number(o.pct) || 0) / 100);
         else {
-            const denom = 1 - (Number(o.cbPct) || 0) / 100 * 10 / 9 - (Number(o.pct) || 0) / 100;
+            const denom = 1 - (Number(o.cbPct) || 0) / 100 * (1 + RATES.cbTaxPct / 100) - (Number(o.pct) || 0) / 100;
             if (denom <= 0) return 0;
             D = cost / denom;
         }
@@ -824,7 +837,7 @@
         detectCategories, detectPlatforms, detectLocations, normalizePlatform, normalizeGender, normalizeAges, tierOf,
         parseBriefText, normalizeBrief, scoreKoc, rankKocs, pickShortlist,
         parseDelimited, importKocsFromText, normalizeKoc, exportKocsToCsv, EXPORT_COLUMNS,
-        TAX_TYPES, BACKUP_RATES, PRICING_DEFAULTS, calcBackup, calcPnl, solvePrice, roundUp,
+        TAX_TYPES, BACKUP_RATES, DEFAULT_RATES, PRICING_DEFAULTS, configureRates, getRates, calcBackup, calcPnl, solvePrice, roundUp,
         FIELD_RULES, FIELD_LABELS, mapHeader, detectTable, importTable, normalizeBlacklistEntry, handleFromLink,
     };
 });
