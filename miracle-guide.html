@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sổ Tay Phép Thuật - The Miracle Workspace</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -72,12 +72,13 @@
                 <ul class="text-gray-300 space-y-3 text-sm">
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>Check Blacklist:</b> Gõ tên KOL vào ô đầu
                         tiên. Hệ thống sẽ tự động đối chiếu với danh sách cấm của nhãn hàng. Nếu KOL có "phốt", hệ thống
-                        sẽ bật cảnh báo đỏ.</li>
+                        sẽ bật cảnh báo đỏ. Có thể bổ sung tên mới vào blacklist trong <b>⚙️ Cài đặt</b>.</li>
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>Chọn Quyền Lợi (FOC):</b> Tick chọn các hạng
                         mục bắt buộc (VD: Code Ads 7 ngày, Chuyển quyền SDHA...).</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>AI Xin Giá:</b> Điền tên bạn và Brand ➝ Ấn
-                        nút <b>"✨ Phác Thảo Tin Nhắn Xin Giá"</b>. AI sẽ tự động viết 1 đoạn văn lủng củng thành tin
-                        nhắn chào mời siêu chuyên nghiệp bằng tiếng Việt không chứa từ lóng.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>AI Xin Giá:</b> Điền tên bạn, Brand, Hạng mục ➝ Ấn
+                        nút <b>"✨ Xin Giá bằng AI"</b>. AI sẽ viết tin nhắn chào mời chuyên nghiệp (tiếng Việt hoặc
+                        tiếng Anh), không chứa từ lóng.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Không có API Key / AI lỗi?</b> Tool tự động dùng văn mẫu có sẵn, bạn vẫn copy được tin nhắn ngay.</li>
                 </ul>
             </div>
 
@@ -94,8 +95,10 @@
                 </div>
                 <ul class="text-gray-300 space-y-3 text-sm">
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>Tự Động Tính Cước:</b> Nhập Lương KOL (Giá
-                        chưa thuế). Chọn % Thuế (PIT/VAT/HKD), hệ thống tự cộng trừ nhân chia phí Thuế và Phí Rủi Ro
-                        (Backup).</li>
+                        chưa thuế, gõ tắt được: <code>10tr</code>, <code>500k</code>, <code>10.000.000</code>). Chọn loại
+                        thuế (PIT = Lương/9, VAT = 0, HKD = 7%), hệ thống tự tính Thuế, Phí Backup (KPI × hệ số nền tảng:
+                        TikTok 3,5 · FB/YT 35 · Threads 700) và <b>Tổng giá vốn</b>.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Contact:</b> Ô SĐT/Zalo được xuất vào cột Contact của file PNL.</li>
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>Xuất Excel Dòng Kẻ:</b> Nút <b>"COPY DÒNG
                             PNL"</b> giúp copy đúng 1 hàng dài chứa 22 cột chuẩn format nội bộ.</li>
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>🗄️ Lưu Vào Kho:</b> Nút xanh lá <b>"💾 LƯU
@@ -117,10 +120,11 @@
                 </div>
                 <ul class="text-gray-300 space-y-3 text-sm">
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>Tính Lợi Nhuận Gộp (Margin):</b> Chỉ cần gõ
-                        mức % Margin mục tiêu (VD: 25%), hệ thống sẽ "đội giá" nhập lên và tự hiển thị mức Giá Bán Ra
-                        (External Cost).</li>
+                        mức % Margin mục tiêu (VD: 25%), hệ thống tính Giá Bán Ra = Tổng giá vốn ÷ (1 − 25%). Lợi nhuận
+                        gộp sau khi trừ Lương, Thuế và Backup sẽ đúng bằng 25% giá bán.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Markup:</b> Nếu quen cách tính cũ, đổi "Cách tính giá bán" sang Markup để cộng thêm % trên giá vốn. Tool nhớ lựa chọn của bạn.</li>
                     <li><i class="fas fa-check text-green-400 mr-2"></i>Copy trực tiếp Báo Giá Dành Cho Khách (Chỉ có
-                        tên, link, giá) ra Excel/Slides mà không lo lộ giá gốc.</li>
+                        tên, hạng mục, giá bán) ra Excel/Slides mà không lo lộ giá gốc.</li>
                 </ul>
             </div>
 
@@ -137,7 +141,7 @@
                 </div>
                 <ul class="text-gray-300 space-y-3 text-sm">
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>Deal Cost:</b> Lúc KOC báo giá quá cao. Bạn
-                        nhập giá mong muốn khống lên (Target Cost) ➝ Ấn <b>"✨ Viết Văn Bản Ép Giá"</b>.</li>
+                        nhập giá mong muốn (VD: <code>5tr</code>) ➝ Ấn <b>"✨ Deal Cast bằng AI"</b>.</li>
                     <li><i class="fas fa-check text-green-400 mr-2"></i>AI sẽ vào vai bạn, bịa ra đủ loại lý do nghe cực
                         kỳ lọt tai (khổ nhục kế, chính sách thắt chặt...) để nài nỉ KOC hạ giá lịch sự nhất có thể.</li>
                 </ul>
@@ -181,7 +185,8 @@
                         <b>xuất được chính xác 22 Cột</b> theo bảng Excel chuẩn của Công Ty (từ STT, Contact, Profit cho
                         đến Loại Thuế). Đảm bảo Copy Paste không thừa không thiếu 1 lề nào.</li>
                     <li><i class="fas fa-check text-green-400 mr-2"></i>Lưu ý: Dữ liệu này lưu trong `Trình duyệt` của
-                        bạn. Dù mất điện F5 lại vẫn còn. Phải ấn "XÓA HẾT" thì nó mới trắng tinh.</li>
+                        bạn. Dù mất điện F5 lại vẫn còn. Phải ấn "XÓA HẾT" thì nó mới trắng tinh. Có thể xóa từng dòng bằng nút ✕.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Sao lưu / Khôi phục:</b> Bấm "Sao lưu (JSON)" để tải file dự phòng, dùng khi đổi máy, đổi trình duyệt hoặc trước khi xóa cache. "Khôi phục" cho phép thay thế hoặc gộp dữ liệu.</li>
                 </ul>
             </div>
 
@@ -210,20 +215,19 @@
                     <h3 class="text-white font-semibold mb-3">🛠️ Cách lắp ráp (Mất 5s):</h3>
                     <ol class="list-decimal pl-5 space-y-2 text-gray-400 mb-6">
                         <li>Vào Tool > Nhìn góc dưới bên trái có nút <b>Magic Bookmarklet</b> > Bấm Mở.</li>
-                        <li>Bôi đen đoạn mã Javascript màu tím trong khung.</li>
                         <li>Ấn <kbd
                                 class="bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs border border-gray-700">Ctrl
                                 + Shift + B</kbd> để hiện Thanh Dấu Trang (Bookmarks).</li>
-                        <li>Kéo thả đoạn mã đó trực tiếp lên thanh Dấu Trang. Xong!</li>
+                        <li>Kéo nút tím <b>"🪄 Miracle Grab"</b> thả lên thanh Dấu Trang. Xong! (Hoặc copy mã trong khung và dán vào ô URL của một bookmark mới.)</li>
                     </ol>
 
                     <h3 class="text-white font-semibold mb-3">🪄 Cách sử dụng:</h3>
                     <ul class="text-gray-400 space-y-2">
                         <li>1. Khi đang lướt TikTok/FB duyệt KOC, bấm vào Bookmark vừa tạo.</li>
-                        <li>2. Nhập "Tên", nhập "Follower", sau đó nhập đường dẫn (File path) của cái Tool này (nếu được
-                            hỏi).</li>
-                        <li>3. BÙM! Trình duyệt sẽ tự nhảy qua Tool, điền sẵn thông số và Focus ngay về Bước 2 cho bạn.
-                            🚀</li>
+                        <li>2. Tool tự lấy Tên và Follower (TikTok, YouTube). Nếu không tìm thấy sẽ hỏi bạn nhập. Đường dẫn Tool đã
+                            được điền sẵn, chỉ cần Enter.</li>
+                        <li>3. BÙM! Trình duyệt sẽ tự nhảy qua Tool, điền sẵn thông số và Focus ngay về Bước 2 cho bạn,
+                            đồng thời tự check Blacklist. 🚀</li>
                     </ul>
                 </div>
             </div>
