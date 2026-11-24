@@ -301,6 +301,9 @@
         if (brandMatch) brief.brand = brandMatch[1].trim();
         const productMatch = raw.match(/(?:sản phẩm|product)\s*[:\-–]\s*([^\n;]+)/i);
         if (productMatch) brief.product = productMatch[1].trim();
+        if (/(tiktok shop|bán hàng|giỏ hàng|affiliate|chuyển đổi đơn|doanh số|gmv|livestream bán|chốt đơn)/.test(t)) brief.goal = 'sales';
+        else if (/(tải app|cài app|cài đặt ứng dụng|tải ứng dụng|đăng ký tài khoản|install)/.test(t)) brief.goal = 'app';
+        else if (/(nhận diện|awareness|độ phủ|ra mắt|launching|branding)/.test(t)) brief.goal = 'awareness';
         const delivMatch = raw.match(/(\d+\s*(?:video|clip|bài đăng|bài|post|livestream|story|reels?)[^\n.;]*)/i);
         if (delivMatch) brief.deliverable = delivMatch[1].trim();
 
@@ -322,6 +325,7 @@
         kocCount: Math.max(0, Math.round(numOr(b.kocCount))),
         minER: numOr(b.minER),
         keywords: uniq(asArray(b.keywords).map(k => k.trim()).filter(Boolean)),
+        goal: ['sales', 'app', 'awareness'].includes(b.goal) ? b.goal : '',
     });
 
     // ================= SCORING =================
@@ -439,6 +443,13 @@
             score += 4 * Math.min(1, hits.length / Math.min(2, brief.keywords.length));
             if (hits.length) add('good', `Khớp từ khóa: ${hits.join(', ')}`);
         } else score += 2;
+
+        // ---- Campaign goal: selling on TikTok Shop favours KOCs who already sell (videos with a cart) ----
+        const shopRatio = koc.shopRatio ?? (koc.analysis && koc.analysis.shopRatio);
+        if (brief.goal === 'sales' && typeof shopRatio === 'number') {
+            if (shopRatio >= 0.2) { score += 6; add('good', `Có kinh nghiệm bán hàng: ${Math.round(shopRatio * 100)}% video gắn giỏ hàng / affiliate`); }
+            else if (shopRatio === 0) { score -= 3; add('warn', 'Chưa thấy video bán hàng (giỏ hàng / affiliate)'); }
+        }
 
         // Industry fit matters most: a KOC outside the brief's industry is heavily discounted.
         if (categoryMismatch) score *= 0.6;
@@ -645,6 +656,7 @@
             status: r.status === 'inactive' ? 'inactive' : 'active',
             demo: !!r.demo,
             analysis: r.analysis && typeof r.analysis === 'object' ? r.analysis : null,
+            ...(typeof r.shopRatio === 'number' ? { shopRatio: Math.round(r.shopRatio * 100) / 100 } : {}),
             updatedAt: r.updatedAt || new Date().toISOString(),
             ...(r.createdAt ? { createdAt: r.createdAt } : {}),
             ...(r.createdBy !== undefined ? { createdBy: String(r.createdBy) } : {}),
@@ -740,6 +752,8 @@
         return out.join(' ').replace(/\s{2,}/g, ' ').trim();
     };
 
+    // Videos that sell: TikTok Shop cart, affiliate links, vouchers
+    const SHOP_RE = /(#tiktokshop|#tiktokshopvn|tiktok shop|giỏ hàng|giỏ vàng|link (ở |trong )?(bio|giỏ)|mã giảm giá|\bvoucher\b|#affiliate|flash ?sale|săn sale|chốt đơn|link sản phẩm|mua (ở|tại) giỏ)/i;
     const SPONSORED_RE = /(#ad\b|#ads\b|#quangcao|#quảngcáo|#sponsored|#hoptac|#hợptác|#partner|#tiktokshop|#affiliate|hợp tác (cùng|với)|tài trợ|nhà tài trợ|link (ở |trong )?bio|giỏ hàng|mã giảm giá|\bvoucher\b|\bcode giảm\b|sponsored by|in partnership)/i;
     const HASHTAG_RE = /#([\p{L}\p{N}_]+)/gu;
 
@@ -794,6 +808,11 @@
 
         const sponsoredCount = captions.filter(c => SPONSORED_RE.test(c)).length;
         const sponsoredRatio = captions.length ? sponsoredCount / captions.length : 0;
+        // a video counts as "selling" when the page flagged a cart / product, or the caption says so
+        const shopFlags = videos.map(v => !!v.shop || SHOP_RE.test(cleanDesc(v.desc)));
+        if (video) shopFlags.unshift(!!video.shop || SHOP_RE.test(cleanDesc(video.desc)));
+        const shopCount = shopFlags.filter(Boolean).length;
+        const shopRatio = shopFlags.length ? shopCount / shopFlags.length : 0;
         const locations = detectLocations(allTexts.join(' \n '));
 
         const handle = String(p.handle || '').replace(/^@/, '');
@@ -807,13 +826,60 @@
             followers, totalLikes, videoCount, avgViews, er, erSource,
             videosAnalyzed: captions.length, captions, transcript,
             categories, categoryCounts: counts, hashtags, locations,
-            sponsoredCount, sponsoredRatio,
+            sponsoredCount, sponsoredRatio, shopCount, shopRatio,
+            unavailable: !!(video && video.unavailable),
             isVideo: !!video, videoUrl: p.type === 'video' ? String(p.url || '') : '',
             stale: !!(video && video.stale), transcriptError: !!(video && video.transcriptError),
         };
     };
 
+    /**
+     * Data a bookmarklet collected on a TikTok search / hashtag page -> scored-ready candidates.
+     * payload.creators: [{ handle, name, followersText, bio, videos: [{ url, desc, viewsText, shop }] }]
+     */
+    const summarizeSearchGrab = (p = {}) => {
+        const list = Array.isArray(p.creators) ? p.creators.slice(0, 150) : [];
+        const out = [];
+        const seen = new Set();
+        list.forEach(c => {
+            const handle = String(c.handle || '').replace(/^@/, '').trim();
+            if (!handle || seen.has(handle.toLowerCase()) || !/^[\w.]{2,30}$/.test(handle)) return;
+            seen.add(handle.toLowerCase());
+            const s = summarizeGrab({ source: 'tiktok', type: 'profile', handle, name: c.name, bio: c.bio, followersText: c.followersText, videos: c.videos || [] });
+            out.push({
+                id: 'tt:' + handle.toLowerCase(),
+                handle, name: s.name || handle, link: s.link, platform: 'TikTok',
+                followers: s.followers, avgViews: s.avgViews, categories: s.categories, locations: s.locations,
+                shopRatio: s.shopRatio, sponsoredRatio: s.sponsoredRatio, hashtags: s.hashtags.slice(0, 8),
+                captions: s.captions.slice(0, 4), videosSeen: s.videosAnalyzed, bio: s.bio,
+            });
+        });
+        return { query: String(p.query || '').trim(), queryType: p.queryType || '', candidates: out };
+    };
+
+    /** Search plan for TikTok web: what to search, with which search mode, most useful first. */
+    const tiktokSearchUrl = (q, type) => type === 'tag'
+        ? `https://www.tiktok.com/tag/${encodeURIComponent(String(q).replace(/^#/, ''))}`
+        : `https://www.tiktok.com/search${type === 'user' ? '/user' : '/video'}?q=${encodeURIComponent(q)}`;
+    const buildSearchPlan = (briefIn, extra = { terms: [], hashtags: [] }) => {
+        const base = buildSearchTerms(briefIn);
+        const terms = uniq([...(extra.terms || []), ...base.terms].map(t => String(t).trim().toLowerCase()).filter(Boolean));
+        const tags = uniq([...(extra.hashtags || []), ...base.hashtags].map(t => removeDiacritics(String(t)).replace(/^#/, '').replace(/[^a-z0-9_]/gi, '').toLowerCase()).filter(t => t.length >= 3));
+        const items = [];
+        // Video search first: it shows creators who actually make this content, with view counts
+        terms.slice(0, 6).forEach(q => items.push({ q, type: 'video' }));
+        tags.slice(0, 4).forEach(q => items.push({ q, type: 'tag' }));
+        terms.slice(0, 3).forEach(q => items.push({ q, type: 'user' }));
+        return items.map(it => ({ ...it, key: `${it.type}:${it.q}`, url: tiktokSearchUrl(it.q, it.type) }));
+    };
+
     /** Build TikTok search terms and hashtags from a brief (no AI). */
+    // Persona groups are searched as lifestyle content, not as "review X"
+    const PERSONA_TERMS = {
+        student: ['vlog sinh viên', 'gen z'], office: ['dân văn phòng', 'vlog đi làm'], worker: ['vlog công nhân'],
+        couple: ['couple', 'cặp đôi'], lifestyle: ['daily vlog', 'lifestyle'], expert: ['bác sĩ chia sẻ', 'chuyên gia'],
+        spiritual: ['tarot', 'chiêm tinh'], community: [], kids: ['bé nhà', 'kid review'], mombaby: ['mẹ bỉm', 'nuôi con'],
+    };
     const buildSearchTerms = (briefIn) => {
         const b = normalizeBrief(briefIn);
         const terms = [];
@@ -824,6 +890,7 @@
         b.categories.forEach(id => {
             const c = CATEGORIES.find(x => x.id === id);
             if (!c) return;
+            if (PERSONA_TERMS[id]) { PERSONA_TERMS[id].forEach(t => terms.push(t)); return; }
             const kws = c.kw.filter(k => k.length > 3 && !/^[a-z&]+$/i.test(k) || ['skincare', 'makeup', 'gaming', 'fitness', 'mukbang', 'outfit'].includes(k)).slice(0, 3);
             kws.forEach(k => terms.push(`review ${k}`));
             if (city && ['fnb', 'travel', 'beauty', 'health'].includes(id)) terms.push(`${kws[0] || c.label} ${city}`);
@@ -835,7 +902,7 @@
     };
 
     return {
-        removeDiacritics, median, parseSubtitles, summarizeGrab, buildSearchTerms,
+        removeDiacritics, median, parseSubtitles, summarizeGrab, buildSearchTerms, summarizeSearchGrab, buildSearchPlan, tiktokSearchUrl, SHOP_RE,
         CATEGORIES, PLATFORMS, TIERS, AGES, GENDERS, LOCATIONS, WEIGHTS,
         parseNumber, formatShort, formatFollowers, norm,
         calcTax, priceFromCost, estimatePrice,

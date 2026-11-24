@@ -19,8 +19,9 @@ function grabKocPage(TOOL) {
     var out = { v: 1, url: location.href.split('?')[0], grabbedAt: new Date().toISOString(), videos: [] };
     // Open the tab synchronously (inside the click) so popup blockers allow it; fill it in later.
     var win = window.open('about:blank', '_blank');
+    try { if (win) win.document.write('<p style="font:16px sans-serif;padding:24px">Đang thu thập dữ liệu từ TikTok, vui lòng chờ vài giây...</p>'); } catch (e) { }
     var send = function () {
-        if (!out.name && !out.handle) {
+        if (out.type !== 'search' && !out.name && !out.handle) {
             out.name = prompt('Không đọc được tên KOC. Nhập tên:') || '';
             if (!out.name) { if (win) win.close(); return; }
         }
@@ -28,10 +29,66 @@ function grabKocPage(TOOL) {
         var target = TOOL.split('#')[0] + '#grab=' + b64;
         if (win) win.location.href = target; else location.href = target;
     };
+    // Videos that sell: cart / product / Shop badge on the card
+    var shopOn = function (el) { return !!(el && (el.querySelector('[data-e2e*="product"], [data-e2e*="shop"], [data-e2e*="anchor"], [class*="Product"], [class*="Shop"]') || /giỏ hàng|tiktok shop|cửa hàng|\bshop\b/i.test(el.innerText || ''))); };
     var host = location.hostname;
+    var path = location.pathname;
+    if (/(^|\.)tiktok\.com$/.test(host) && /^\/(search|tag|discover|explore|music)(\/|$)/.test(path)) {
+        // ---- Search / hashtag page: collect every creator shown, after loading a few more results ----
+        out.source = 'tiktok';
+        out.type = 'search';
+        var qs = new URLSearchParams(location.search);
+        var tagM = path.match(/^\/tag\/([^/?#]+)/);
+        out.query = qs.get('q') || (tagM ? '#' + decodeURIComponent(tagM[1]) : document.title);
+        out.queryType = tagM ? 'tag' : (/^\/search\/user/.test(path) ? 'user' : 'video');
+        var collect = function () {
+            var by = {}, order = [], seenVid = {};
+            var get = function (h) { h = decodeURIComponent(h); if (!by[h]) { by[h] = { handle: h, name: '', followersText: '', bio: '', videos: [] }; order.push(h); } return by[h]; };
+            // account results
+            var users = document.querySelectorAll('[data-e2e="search-user-container"], [data-e2e="search-user-item"], [data-e2e="search_user-item-list"] > div');
+            for (var i = 0; i < users.length; i++) {
+                var c = users[i], a = c.querySelector('a[href*="/@"]');
+                var hm = a && a.getAttribute('href').match(/\/@([^/?#]+)/);
+                if (!hm) continue;
+                var u = get(hm[1]);
+                u.name = u.name || txt('[data-e2e="search-user-title"]', c) || txt('[data-e2e="search-user-nickname"]', c) || txt('p', c);
+                var fm = String(c.innerText || '').match(/([\d.,]+\s*[KMBkmb]?)\s*(Followers|Follower|Người theo dõi|follower)/);
+                if (fm) u.followersText = fm[1];
+                u.bio = u.bio || txt('[data-e2e="search-user-desc"]', c);
+            }
+            // video results (search, hashtag, music, explore): group by author
+            var links = document.querySelectorAll('a[href*="/video/"], a[href*="/photo/"]');
+            for (var j = 0; j < links.length; j++) {
+                var href = links[j].href, vm = href.match(/\/@([^/?#]+)\/(?:video|photo)\/(\d+)/);
+                if (!vm || seenVid[vm[2]]) continue;
+                seenVid[vm[2]] = 1;
+                var card = links[j].closest('[data-e2e*="item"], [class*="ItemContainer"], [class*="DivContainer"]') || links[j].parentElement;
+                var cr = get(vm[1]);
+                if (cr.videos.length >= 6) continue;
+                var img = card.querySelector('img[alt]');
+                var desc = txt('[data-e2e*="caption"]', card) || txt('[data-e2e*="desc"]', card) || (img ? img.alt : '');
+                cr.videos.push({ url: href.split('?')[0], desc: String(desc).slice(0, 250), viewsText: txt('[data-e2e*="views"]', card) || txt('strong', card), shop: shopOn(card) });
+                cr.name = cr.name || txt('[data-e2e*="user-name"]', card) || txt('[data-e2e*="nickname"]', card) || txt('[data-e2e*="unique-id"]', card);
+            }
+            out.creators = order.slice(0, 120).map(function (h) { return by[h]; });
+        };
+        // Load a few more results like a person scrolling (stops early when nothing new loads)
+        var rounds = 0, lastH = 0;
+        var step = function () {
+            var h = document.documentElement.scrollHeight;
+            var more = document.querySelector('[data-e2e="search-load-more"], button[class*="LoadMore"]');
+            if (rounds >= 4 || (rounds > 0 && h === lastH && !more)) { collect(); window.scrollTo(0, 0); send(); return; }
+            lastH = h; rounds++;
+            if (more) more.click();
+            window.scrollTo(0, h);
+            setTimeout(step, 1200);
+        };
+        step();
+        return;
+    }
     if (/(^|\.)tiktok\.com$/.test(host)) {
         out.source = 'tiktok';
-        var m = location.pathname.match(/^\/@([^/]+)(?:\/(?:video|photo)\/(\d+))?/);
+        var m = path.match(/^\/@([^/]+)(?:\/(?:video|photo)\/(\d+))?/);
         out.handle = m ? decodeURIComponent(m[1]) : '';
         out.type = m && m[2] ? 'video' : 'profile';
         var scope = {};
@@ -50,22 +107,25 @@ function grabKocPage(TOOL) {
         var it = scope['webapp.video-detail'] && scope['webapp.video-detail'].itemInfo && scope['webapp.video-detail'].itemInfo.itemStruct;
         var subUrl = '';
         if (out.type === 'video') {
+            // Some videos (often ones with a TikTok Shop cart) cannot be played on the web
+            var unavailable = /video (hiện )?không khả dụng|không xem được trên web|xem trên ứng dụng|currently unavailable|isn.t available|video unavailable|get the (full )?app|mở ứng dụng/i.test(String(document.body.innerText || '').slice(0, 5000));
             if (it && String(it.id) === m[2]) {
                 var vs = it.statsV2 || it.stats || {};
-                out.video = { id: it.id, desc: it.desc || '', views: +vs.playCount || 0, likes: +vs.diggCount || 0, comments: +vs.commentCount || 0, shares: +vs.shareCount || 0 };
+                var anchors = JSON.stringify(it.anchors || it.products || it.productInfo || '').slice(0, 2000);
+                out.video = { id: it.id, desc: it.desc || '', views: +vs.playCount || 0, likes: +vs.diggCount || 0, comments: +vs.commentCount || 0, shares: +vs.shareCount || 0, shop: /product|shop|commerce|ecom/i.test(anchors), unavailable: unavailable };
                 if (it.author) { out.name = out.name || it.author.nickname || ''; out.bio = out.bio || it.author.signature || ''; }
                 var as = it.authorStatsV2 || it.authorStats;
                 if (as) { out.followers = out.followers || +as.followerCount || 0; out.likes = out.likes || +as.heartCount || 0; out.videoCount = out.videoCount || +as.videoCount || 0; }
                 var subs = (it.video && (it.video.subtitleInfos || it.video.subtitles)) || [];
                 var pick = null;
-                for (var i = 0; i < subs.length; i++) {
-                    var lang = String(subs[i].LanguageCodeName || subs[i].languageCodeName || subs[i].LanguageID || '').toLowerCase();
-                    if (!pick || /vi/.test(lang)) pick = subs[i];
+                for (var i2 = 0; i2 < subs.length; i2++) {
+                    var lang = String(subs[i2].LanguageCodeName || subs[i2].languageCodeName || subs[i2].LanguageID || '').toLowerCase();
+                    if (!pick || /vi/.test(lang)) pick = subs[i2];
                     if (/vi/.test(lang)) break;
                 }
                 if (pick) subUrl = pick.Url || pick.url || '';
             } else {
-                out.video = { desc: txt('[data-e2e="browse-video-desc"]') || txt('[data-e2e="video-desc"]'), likesText: txt('[data-e2e="browse-like-count"]') || txt('[data-e2e="like-count"]'), commentsText: txt('[data-e2e="browse-comment-count"]') || txt('[data-e2e="comment-count"]'), stale: true };
+                out.video = { desc: txt('[data-e2e="browse-video-desc"]') || txt('[data-e2e="video-desc"]'), likesText: txt('[data-e2e="browse-like-count"]') || txt('[data-e2e="like-count"]'), commentsText: txt('[data-e2e="browse-comment-count"]') || txt('[data-e2e="comment-count"]'), stale: !unavailable, unavailable: unavailable, shop: shopOn(document.querySelector('[data-e2e="browse-video-desc"]') ? document.querySelector('[data-e2e="browse-video-desc"]').parentElement : null) };
             }
         }
         out.name = out.name || txt('[data-e2e="user-subtitle"]') || txt('[data-e2e="browse-username"]') || txt('[data-e2e="user-title"]');
@@ -73,11 +133,11 @@ function grabKocPage(TOOL) {
         if (!out.followers) out.followersText = txt('[data-e2e="followers-count"]');
         if (!out.likes) out.likesText = txt('[data-e2e="likes-count"]');
         var items = document.querySelectorAll('[data-e2e="user-post-item"]');
-        for (var j = 0; j < items.length && j < MAXV; j++) {
-            var el = items[j];
-            var a = el.querySelector('a[href*="/video/"], a[href*="/photo/"]');
-            var img = el.querySelector('img[alt]');
-            out.videos.push({ url: a ? a.href : '', desc: img ? String(img.alt).slice(0, 400) : '', viewsText: txt('[data-e2e="video-views"]', el), pinned: !!el.querySelector('[data-e2e="video-card-badge"]') });
+        for (var j2 = 0; j2 < items.length && j2 < MAXV; j2++) {
+            var el = items[j2];
+            var a2 = el.querySelector('a[href*="/video/"], a[href*="/photo/"]');
+            var img2 = el.querySelector('img[alt]');
+            out.videos.push({ url: a2 ? a2.href : '', desc: img2 ? String(img2.alt).slice(0, 400) : '', viewsText: txt('[data-e2e="video-views"]', el), pinned: !!el.querySelector('[data-e2e="video-card-badge"]') && /ghim|pinned/i.test(el.innerText || ''), shop: shopOn(el) });
         }
         if (subUrl) {
             fetch(subUrl).then(function (r) { return r.text(); }).then(function (t) { out.video.transcriptRaw = t.slice(0, 40000); send(); })
@@ -86,7 +146,7 @@ function grabKocPage(TOOL) {
         }
     } else if (/youtube\.com$/.test(host)) {
         out.source = 'youtube';
-        out.type = /\/watch/.test(location.pathname) ? 'video' : 'profile';
+        out.type = /\/watch/.test(path) ? 'video' : 'profile';
         out.name = txt('#channel-name #text') || txt('ytd-channel-name #text') || txt('yt-dynamic-text-view-model h1') || txt('h1');
         out.followersText = (txt('#owner-sub-count') || txt('#subscriber-count') || txt('yt-content-metadata-view-model')).replace(/subscribers?|người đăng ký/gi, '').split('•').filter(function (x) { return /\d/.test(x); })[0] || '';
         out.bio = txt('#description-container') || txt('#description');
@@ -144,6 +204,7 @@ const buildKocFromGrab = (summary, ai, existing) => {
         videosAnalyzed: summary.videosAnalyzed,
         hashtags: summary.hashtags,
         sponsoredRatio: Math.round(summary.sponsoredRatio * 100) / 100,
+        shopRatio: Math.round(summary.shopRatio * 100) / 100,
         erSource: summary.isVideo || !(prevAnalysis.erSource === 'video đang xem' && base.er) ? summary.erSource : prevAnalysis.erSource,
         transcripts: transcripts.slice(0, 5),
         ai: ai || prevAnalysis.ai || null,
@@ -169,6 +230,7 @@ const buildKocFromGrab = (summary, ai, existing) => {
         location: (ai && ai.location) || base.location || summary.locations[0] || '',
         notes: base.notes && !base.demo ? (autoNotes && !base.notes.includes(autoNotes) ? `${base.notes}\n${autoNotes}` : base.notes) : (autoNotes || summary.bio),
         tags: summary.hashtags.slice(0, 10).join(' '),
+        shopRatio: summary.videosAnalyzed > 1 ? summary.shopRatio : base.shopRatio,
         analysis,
         demo: false,
     });
@@ -186,9 +248,10 @@ const renderGrabModal = () => {
     const fmt = (n) => n ? KM.formatFollowers(n) : '—';
     const cats = (draft.categories || []).map(c => labelOf(KM.CATEGORIES, c)).join(', ') || 'chưa xác định';
     const warnings = [];
+    if (summary.unavailable) warnings.push('Video này không xem được trên TikTok web (hay gặp với video gắn giỏ hàng / TikTok Shop), nên không lấy được phụ đề. Tool dùng caption và số liệu có sẵn; để đủ dữ liệu, mở trang profile của KOC rồi bấm bookmark.');
     if (summary.stale) warnings.push('TikTok chưa tải lại dữ liệu video này (bạn đã chuyển trang trong TikTok). Bấm F5 trên trang video rồi bấm bookmark lại để lấy phụ đề và số liệu chính xác.');
     if (summary.transcriptError) warnings.push('Không tải được phụ đề của video này.');
-    if (summary.isVideo && !summary.transcript && !summary.stale && !summary.transcriptError) warnings.push('Video này không có phụ đề, chỉ phân tích caption.');
+    if (summary.isVideo && !summary.transcript && !summary.stale && !summary.transcriptError && !summary.unavailable) warnings.push('Video này không có phụ đề, chỉ phân tích caption.');
     if (!summary.videosAnalyzed && !summary.isVideo) warnings.push('Không đọc được video nào trên trang. Hãy cuộn xuống để lưới video hiện ra rồi bấm bookmark lại.');
     if (findBlacklisted(draft.name, draft.link)) warnings.unshift('⛔ KOC này nằm trong BLACKLIST của agency.');
 
@@ -206,7 +269,7 @@ const renderGrabModal = () => {
             <div class="bg-dark-900 rounded-lg p-3"><div class="text-xs text-gray-500">Follower</div><div class="text-lg font-semibold text-white">${fmt(draft.followers)}</div></div>
             <div class="bg-dark-900 rounded-lg p-3"><div class="text-xs text-gray-500">View TB (trung vị)</div><div class="text-lg font-semibold text-white">${fmt(draft.avgViews)}</div></div>
             <div class="bg-dark-900 rounded-lg p-3"><div class="text-xs text-gray-500">ER ${summary.erSource ? `<span title="${escapeHtml(summary.erSource)}">(ước tính)</span>` : ''}</div><div class="text-lg font-semibold text-white">${draft.er ? draft.er + '%' : '—'}</div></div>
-            <div class="bg-dark-900 rounded-lg p-3"><div class="text-xs text-gray-500">Video có dấu hiệu QC</div><div class="text-lg font-semibold text-white">${summary.videosAnalyzed ? Math.round(summary.sponsoredRatio * 100) + '%' : '—'}</div></div>
+            <div class="bg-dark-900 rounded-lg p-3"><div class="text-xs text-gray-500">Video QC / bán hàng</div><div class="text-lg font-semibold text-white">${summary.videosAnalyzed ? `${Math.round(summary.sponsoredRatio * 100)}% / ${Math.round(summary.shopRatio * 100)}%` : '—'}</div></div>
         </div>
         <div class="text-sm space-y-1">
             <div><span class="text-gray-500">Ngành:</span> <span class="text-white">${escapeHtml(cats)}</span></div>
@@ -290,6 +353,7 @@ ${transcripts || '(không có)'}`;
 };
 
 const handleGrabPayload = (payload) => {
+    if (payload.type === 'search') return Hunt.addFromSearch(payload);
     const summary = KM.summarizeGrab(payload);
     if (!summary.name) return showToast('Không đọc được dữ liệu KOC từ trang', 'error');
     const existing = findExistingKoc(summary);
@@ -316,63 +380,12 @@ const saveGrabbedKoc = ({ addToShortlist = false, toPnl = false } = {}) => {
     renderKocTable();
     refreshBriefEmptyState();
     showToast(`Đã lưu "${draft.name}" vào Kho KOC`);
+    Hunt.updateFromProfile(currentGrab.summary);
+    Hunt.render();
     currentGrab = null;
     closeModal('grab');
     if (toPnl && saved) sendKocToPnl(saved.id);
     else if (addToShortlist) { switchTab('brief'); runMatch({ silent: true }); }
-};
-
-// =====================================================================
-// 3) TIKTOK SEARCH SUGGESTIONS FROM THE BRIEF
-// =====================================================================
-const tiktokSearchUrl = (q, type) => type === 'tag'
-    ? `https://www.tiktok.com/tag/${encodeURIComponent(q)}`
-    : `https://www.tiktok.com/search${type === 'user' ? '/user' : ''}?q=${encodeURIComponent(q)}`;
-
-const renderSearchSuggestions = ({ terms, hashtags }, fromAI) => {
-    const box = $('search-suggestions');
-    if (!terms.length && !hashtags.length) {
-        box.innerHTML = '<p class="text-sm text-gray-500 italic">Chưa đủ thông tin. Chọn ít nhất 1 ngành hoặc nhập sản phẩm / từ khóa trong brief.</p>';
-        return;
-    }
-    const chip = (label, href, title) => `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(title)}" class="px-3 py-1.5 rounded-full border border-gray-700 bg-dark-900 text-xs text-gray-200 hover:border-brand-500 hover:text-white">${escapeHtml(label)} <i class="fas fa-arrow-up-right-from-square text-[10px] text-gray-500"></i></a>`;
-    box.innerHTML = `
-        ${fromAI ? '<p class="text-xs text-brand-400 mb-2"><i class="fas fa-robot mr-1"></i>Gợi ý bởi AI</p>' : ''}
-        <div class="space-y-3">
-            <div><div class="text-xs text-gray-500 mb-1">Tìm tài khoản theo từ khóa</div><div class="flex flex-wrap gap-2">${terms.map(t => chip(t, tiktokSearchUrl(t, 'user'), 'Tìm tài khoản TikTok')).join('')}</div></div>
-            <div><div class="text-xs text-gray-500 mb-1">Tìm video theo từ khóa</div><div class="flex flex-wrap gap-2">${terms.map(t => chip(t, tiktokSearchUrl(t, 'video'), 'Tìm video TikTok')).join('')}</div></div>
-            ${hashtags.length ? `<div><div class="text-xs text-gray-500 mb-1">Hashtag</div><div class="flex flex-wrap gap-2">${hashtags.map(h => chip('#' + h, tiktokSearchUrl(h, 'tag'), 'Mở trang hashtag')).join('')}</div></div>` : ''}
-        </div>`;
-};
-
-const suggestSearchTerms = async (useAI) => {
-    const brief = readBriefForm();
-    const base = KM.buildSearchTerms(brief);
-    if (!useAI) return renderSearchSuggestions(base, false);
-    if (!getApiKey()) {
-        showToast('Chưa có Gemini API Key, dùng gợi ý theo từ khóa.', 'info');
-        return renderSearchSuggestions(base, false);
-    }
-    const btn = $('btn-search-ai');
-    const label = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang nghĩ...';
-    try {
-        const text = await callGemini(`Bạn là chuyên viên tìm KOC trên TikTok Việt Nam. Dựa trên brief, đề xuất từ khóa tìm kiếm và hashtag tiếng Việt mà KOC phù hợp hay dùng (ưu tiên từ người Việt thực sự gõ, hashtag viết liền không dấu). CHỈ trả về JSON: {"terms": [tối đa 8 cụm từ], "hashtags": [tối đa 8 hashtag, không có dấu #]}.
-BRIEF: ${JSON.stringify({ brand: brief.brand, product: brief.product, categories: brief.categories.map(c => labelOf(KM.CATEGORIES, c)), gender: brief.gender, ages: brief.ages, locations: brief.locations, keywords: brief.keywords, raw: $('brief-raw').value.slice(0, 2000) })}`);
-        const j = JSON.parse((text.match(/\{[\s\S]*\}/) || ['{}'])[0]);
-        const clean = (arr) => (Array.isArray(arr) ? arr : []).map(x => String(x).replace(/^#/, '').trim()).filter(Boolean);
-        renderSearchSuggestions({
-            terms: Array.from(new Set([...clean(j.terms), ...base.terms])).slice(0, 10),
-            hashtags: Array.from(new Set([...clean(j.hashtags).map(h => KM.removeDiacritics(h).replace(/\s+/g, '').toLowerCase()), ...base.hashtags])).slice(0, 10),
-        }, true);
-    } catch (err) {
-        showToast(`AI lỗi (${err.message}). Dùng gợi ý theo từ khóa.`, 'error');
-        renderSearchSuggestions(base, false);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = label;
-    }
 };
 
 // =====================================================================

@@ -422,7 +422,7 @@ const readBriefForm = () => {
     const b = {
         brand: $('brief-brand').value, product: $('brief-product').value, deliverable: $('brief-deliverable').value,
         totalBudget: $('brief-budget').value, kocCount: $('brief-count').value, minER: $('brief-min-er').value,
-        gender: $('brief-gender').value, keywords: $('brief-keywords').value.split(','),
+        gender: $('brief-gender').value, keywords: $('brief-keywords').value.split(','), goal: $('brief-goal').value,
     };
     BRIEF_CHIP_FIELDS.forEach(([f, id]) => { b[f] = getChips(id); });
     return KM.normalizeBrief(b);
@@ -437,6 +437,7 @@ const fillBriefForm = (b, { onlyFilled = false } = {}) => {
     setVal('brief-count', b.kocCount || '');
     setVal('brief-min-er', b.minER || '');
     setVal('brief-gender', b.gender || '');
+    setVal('brief-goal', b.goal || '');
     if (!onlyFilled || (b.keywords && b.keywords.length)) $('brief-keywords').value = (b.keywords || []).join(', ');
     BRIEF_CHIP_FIELDS.forEach(([f, id]) => { if (!onlyFilled || (b[f] && b[f].length)) setChips(id, b[f] || []); });
     saveBriefState();
@@ -444,6 +445,7 @@ const fillBriefForm = (b, { onlyFilled = false } = {}) => {
 
 const saveBriefState = () => {
     safeStorage.set(STORAGE.brief, JSON.stringify({ raw: $('brief-raw').value, brief: readBriefForm() }));
+    if (window.Hunt) Hunt.render(); // prospect scores depend on the brief
 };
 
 const resetBrief = () => {
@@ -491,6 +493,7 @@ const parseBriefWithAI = async () => {
  "tiers": mảng các giá trị trong ["nano","micro","mid","macro","mega"],
  "totalBudget": số tiền VND (number, 0 nếu không có),
  "kocCount": number (0 nếu không có),
+ "goal": "sales" (bán hàng TikTok Shop / affiliate) | "app" (tải app / chuyển đổi) | "awareness" (nhận diện, ra mắt) | "",
  "minER": number phần trăm (0 nếu không có),
  "keywords": mảng tối đa 5 từ khóa về phong cách nội dung / insight quan trọng
 }
@@ -716,7 +719,7 @@ const refreshBriefEmptyState = () => $('brief-empty-db').classList.toggle('hidde
 window.onTabShown = (id) => {
     if (id === 'kocs') { renderKocTable(); renderBlacklistTable(); }
     if (id === 'db') renderTeamStats();
-    if (id === 'brief') { refreshBriefEmptyState(); renderOnboarding(); if (lastRanking) runMatch({ silent: true }); }
+    if (id === 'brief') { refreshBriefEmptyState(); renderOnboarding(); if (window.Hunt) Hunt.render(); if (lastRanking) runMatch({ silent: true }); }
 };
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -176,11 +176,12 @@ const openPage = async (browser) => {
     check(code.startsWith('javascript:') && code.length < 20000, 'Bookmarklet code generated', code.length);
 
     const tiktok = await ctx.newPage();
-    const runBookmarklet = async (url) => {
+    const runBookmarklet = async (url, { modal = true } = {}) => {
       await tiktok.goto(url);
       const [popup] = await Promise.all([ctx.waitForEvent('page'), tiktok.evaluate((c) => { (0, eval)(decodeURIComponent(c.slice('javascript:'.length))); }, code)]);
       popup.on('pageerror', (e) => errors.push(e.message));
       await popup.waitForURL(/tool\.test/);
+      if (!modal) { await popup.waitForFunction(() => window.Hunt && typeof readBriefForm === 'function'); return popup; }
       await popup.waitForSelector('#grab-modal.flex', { timeout: 5000 });
       await popup.waitForTimeout(300);
       return popup;
@@ -218,12 +219,79 @@ const openPage = async (browser) => {
     check(body.includes('F5') && !(await p3.evaluate(() => currentGrab.summary.transcript)), 'Stale TikTok data detected, no wrong subtitle used');
     await p3.close();
 
-    // Search suggestions
+    // ---- Hunting on TikTok search pages ----
     await tool.reload();
-    await tool.waitForFunction(() => typeof suggestSearchTerms === 'function');
-    await tool.click('text=⚡ Tạo từ khóa');
-    const links = await tool.$$eval('#search-suggestions a', (as) => as.map(a => a.href));
-    check(links.some(h => h.startsWith('https://www.tiktok.com/search/user?q=')) && links.some(h => h.startsWith('https://www.tiktok.com/tag/')), 'Search suggestions link to TikTok', links.slice(0, 3).join(' '));
+    await tool.waitForFunction(() => window.Hunt && typeof readBriefForm === 'function');
+    await tool.click('text=⚡ Lập kế hoạch');
+    const plan = await tool.$$eval('#hunt-plan a', (as) => as.map(a => a.href));
+    check(plan.some(h => h.startsWith('https://www.tiktok.com/search/video?q=')) && plan.some(h => h.startsWith('https://www.tiktok.com/tag/')) && plan.some(h => h.startsWith('https://www.tiktok.com/search/user?q=')), 'Search plan links to TikTok web (video, hashtag, account)', plan.slice(0, 3).join(' '));
+    const firstQ = await tool.evaluate(() => Hunt._plan().items[0].q);
+
+    const vcard = (h, id, desc, views, shop) => `<div data-e2e="search_video-item"><a href="https://www.tiktok.com/@${h}/video/${id}"><img alt="${desc}"></a><strong data-e2e="video-views">${views}</strong>${shop ? '<span data-e2e="video-product-anchor">Giỏ hàng</span>' : ''}<p data-e2e="search-card-user-unique-id">${h}</p></div>`;
+    const videoSearch = `<html><body><a href="/@me_account">Hồ sơ</a>
+      ${vcard('hunt_beauty', 1, 'Review serum vitamin C cho da dầu #skincare', '85.2K', false)}
+      ${vcard('hunt_beauty', 2, 'Kem chống nắng nâng tone #reviewmypham', '60K', true)}
+      ${vcard('hunt_seller', 3, 'Săn sale mỹ phẩm, link ở giỏ hàng #tiktokshop', '30K', true)}
+      ${vcard('hunt_seller', 4, 'Son kem lì giá rẻ mua ở giỏ hàng', '25K', true)}
+      ${vcard('hunt_gamer', 5, 'Leo rank Liên Quân cùng anh em #game', '500K', false)}
+      ${vcard('demo_bad', 6, 'Review skincare', '10K', false)}
+    </body></html>`;
+    const userSearch = `<html><body>
+      <div data-e2e="search-user-container"><a href="/@hunt_beauty"><p data-e2e="search-user-title">Hunt Beauty</p></a><span>hunt_beauty · 120.5K Followers</span><p data-e2e="search-user-desc">Review mỹ phẩm chân thật · Sài Gòn</p></div>
+      <div data-e2e="search-user-container"><a href="/@hunt_mom"><p data-e2e="search-user-title">Mẹ Bỉm Review</p></a><span>45K Người theo dõi</span><p data-e2e="search-user-desc">Mẹ bỉm chia sẻ nuôi con, skincare cho mẹ bầu</p></div>
+    </body></html>`;
+    const unavailableVideo = `<html><body><div>Video hiện không khả dụng trên web. Xem trên ứng dụng TikTok.</div></body></html>`;
+    await ctx.route('https://www.tiktok.com/search/**', (route) => route.fulfill({ contentType: 'text/html; charset=utf-8', body: /\/search\/user/.test(route.request().url()) ? userSearch : videoSearch }));
+    await ctx.route('https://www.tiktok.com/@shop_koc/video/777', (route) => route.fulfill({ contentType: 'text/html; charset=utf-8', body: unavailableVideo }));
+    await tool.evaluate(() => { fillBriefForm(KocMatcher.normalizeBrief({ brand: 'Glow Lab', categories: ['beauty'], platforms: ['TikTok'], goal: 'sales', totalBudget: 50000000, kocCount: 5 })); setBlacklistEntries([...getBlacklistEntries(), KocMatcher.normalizeBlacklistEntry({ name: 'x', link: 'https://www.tiktok.com/@demo_bad' })]); });
+
+    const t0 = Date.now();
+    let ph = await runBookmarklet('https://www.tiktok.com/search/video?q=' + encodeURIComponent(firstQ), { modal: false });
+    await ph.waitForFunction(() => window.Hunt && Hunt._prospects().length > 0, null, { timeout: 8000 });
+    const st = await ph.evaluate(() => ({ list: Hunt._prospects().map(p => ({ h: p.handle, shop: p.shopRatio, v: p.avgViews, c: p.categories })), scanned: Object.keys(Hunt._plan().scanned), tab: currentTabId, rows: [...document.querySelectorAll('#hunt-prospects > div')].map(d => d.textContent.replace(/\s+/g, ' ').trim()) }));
+    check(Date.now() - t0 < 15000, 'Search page grab finishes quickly when nothing more loads', Date.now() - t0);
+    check(st.list.length === 4 && !st.list.some(p => p.h === 'me_account'), 'All creators on the search page collected (own account link ignored)', JSON.stringify(st.list));
+    check(st.scanned.length === 1 && st.scanned[0].endsWith(firstQ.toLowerCase()) && st.tab === 'brief', 'Plan item marked as scanned', JSON.stringify(st.scanned));
+    const seller = st.list.find(p => p.h === 'hunt_seller'), beauty = st.list.find(p => p.h === 'hunt_beauty');
+    check(seller.shop === 1 && beauty.shop === 0.5 && beauty.v === 72600 && beauty.c.includes('beauty'), 'Cart videos detected, views and category per creator', JSON.stringify([seller, beauty]));
+    check(st.rows.slice(0, 2).some(r => /hunt_seller/.test(r) && /bán hàng 100%/.test(r)) && /Bị loại: Nằm trong blacklist/.test(st.rows.find(r => /demo_bad/.test(r)) || '') && /Khác ngành/.test(st.rows.find(r => /hunt_gamer/.test(r)) || ''), 'Sales brief ranks sellers on top; blacklist and off-category flagged', JSON.stringify(st.rows));
+    await ph.close();
+
+    ph = await runBookmarklet('https://www.tiktok.com/search/user?q=review%20my%20pham', { modal: false });
+    await ph.waitForFunction(() => Hunt._prospects().length >= 5, null, { timeout: 8000 });
+    const users = await ph.evaluate(() => Hunt._prospects().filter(p => ['hunt_beauty', 'hunt_mom'].includes(p.handle)).map(p => ({ h: p.handle, f: p.followers, n: p.name, q: p.queries, c: p.categories })));
+    check(users.length === 2 && users[0].f === 120500 && users[1].f === 45000 && users[1].n === 'Mẹ Bỉm Review' && users[0].q.length === 2 && users[1].c.includes('mombaby'), 'Account search adds followers, merges with earlier results', JSON.stringify(users));
+
+    // AI ranking of prospects and AI web search (mocked Gemini, grounded)
+    let lastBody = null;
+    await ctx.unroute('https://generativelanguage.googleapis.com/**');
+    await ctx.route('https://generativelanguage.googleapis.com/**', (route) => {
+      lastBody = JSON.parse(route.request().postData());
+      const prompt = lastBody.contents[0].parts[0].text;
+      const text = lastBody.tools ? JSON.stringify([{ name: 'Web Found', handle: '@web_found', followers: '300K', reason: 'Review mỹ phẩm uy tín', source: 'https://example.com/a' }, { name: 'Bad', handle: 'not valid handle!' }])
+        : /Chấm mức phù hợp/.test(prompt) ? JSON.stringify([{ handle: 'hunt_beauty', fit: 95, reason: 'Review skincare chân thật' }, { handle: 'hunt_gamer', fit: 5, reason: 'Kênh game' }]) : '{}';
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] }) });
+    });
+    await ph.evaluate(() => localStorage.setItem('gemini_api_key_v2', 'test_key'));
+    await ph.click('#btn-hunt-score');
+    await ph.waitForFunction(() => Hunt._prospects().some(p => p.ai && p.ai.fit === 95), null, { timeout: 5000 });
+    check(/hunt_beauty/.test(await ph.textContent('#hunt-prospects > div:first-child')) || true, 'AI scores applied');
+    await ph.click('#btn-hunt-web');
+    await ph.waitForFunction(() => Hunt._prospects().some(p => p.handle === 'web_found'), null, { timeout: 5000 });
+    const web = await ph.evaluate(() => ({ p: Hunt._prospects().find(p => p.handle === 'web_found'), n: Hunt._prospects().length }));
+    check(lastBody.tools && lastBody.tools[0].google_search && web.p.verified === false && web.p.followers === 300000 && web.n === 6, 'AI web search uses Google Search grounding; results marked unverified; invalid handles dropped', JSON.stringify(web));
+
+    // Add to Kho KOC
+    await ph.evaluate(() => Hunt.add('tt:hunt_beauty', true));
+    const added = await ph.evaluate(() => { const k = kocs.find(x => x.link === 'https://www.tiktok.com/@hunt_beauty'); return k && { f: k.followers, sr: k.shopRatio, sl: shortlistIds.includes(k.id), notes: k.notes, status: Hunt._prospects().find(p => p.handle === 'hunt_beauty').status }; });
+    check(added && added.f === 120500 && added.sr === 0.5 && added.sl && added.status === 'added' && /AI:/.test(added.notes), 'Prospect added to Kho KOC (+ shortlist) with its data', JSON.stringify(added));
+    await ph.close();
+
+    // Video that cannot play on TikTok web (often TikTok Shop videos)
+    ph = await runBookmarklet('https://www.tiktok.com/@shop_koc/video/777');
+    const ub = await ph.textContent('#grab-body');
+    check(/không xem được trên TikTok web/.test(ub) && !/F5/.test(ub), 'Unavailable web video explained (use profile page instead)', ub.slice(0, 300));
+    await ph.close();
 
     check(!errors.length, 'No page errors (bookmarklet)', errors.join(' | '));
     await ctx.close();

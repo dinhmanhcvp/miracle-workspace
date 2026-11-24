@@ -367,7 +367,7 @@ const fillTemplate = (template, vars) => template.replace(/\{(\w+)\}/g, (m, k) =
 const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // ================= AI =================
-const callGemini = async (promptText) => {
+const callGemini = async (promptText, opts = {}) => {
     const key = getApiKey();
     if (!key) throw new Error('NO_KEY');
     const model = safeStorage.get(STORAGE.model, DEFAULT_MODEL) || DEFAULT_MODEL;
@@ -376,7 +376,8 @@ const callGemini = async (promptText) => {
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({
             contents: [{ parts: [{ text: promptText }] }],
-            generationConfig: { temperature: 0.7 }
+            generationConfig: { temperature: opts.temperature ?? 0.7 },
+            ...(opts.tools ? { tools: opts.tools } : {})
         })
     });
     let data = {};
