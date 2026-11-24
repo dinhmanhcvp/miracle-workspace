@@ -18,7 +18,7 @@
         { id: 'tech', label: 'Công nghệ', kw: ['công nghệ', 'tech', 'điện thoại', 'laptop', 'smartphone', 'gadget', 'điện tử', 'tai nghe', 'đồng hồ thông minh'] },
         { id: 'game', label: 'Game', kw: ['game', 'gaming', 'esport', 'liên quân', 'pubg', 'free fire', 'gamer', 'streamer', 'mobile game'] },
         { id: 'app', label: 'App / Tài chính', kw: ['ứng dụng', 'fintech', 'ví điện tử', 'momo', 'ngân hàng', 'tài chính', 'đầu tư', 'chứng khoán', 'bảo hiểm', 'tải app', 'cài app', 'app'] },
-        { id: 'mombaby', label: 'Mẹ & Bé', kw: ['mẹ và bé', 'mẹ & bé', 'mẹ bỉm', 'em bé', 'trẻ em', 'sữa bột', 'bỉm', 'nuôi con', 'mẹ bầu', 'trẻ nhỏ'] },
+        { id: 'mombaby', label: 'Mẹ bỉm / Gia đình', kw: ['mẹ và bé', 'mẹ & bé', 'mẹ bỉm', 'em bé', 'trẻ em', 'sữa bột', 'bỉm', 'nuôi con', 'mẹ bầu', 'trẻ nhỏ', 'gia đình', 'family', 'nội trợ', 'vợ chồng', 'cô vợ'] },
         { id: 'health', label: 'Sức khỏe / Thể thao', kw: ['sức khỏe', 'fitness', 'gym', 'thể thao', 'tập luyện', 'giảm cân', 'dinh dưỡng', 'thực phẩm chức năng', 'yoga', 'chạy bộ'] },
         { id: 'travel', label: 'Du lịch', kw: ['du lịch', 'travel', 'khách sạn', 'resort', 'homestay', 'vé máy bay', 'check-in', 'phượt'] },
         { id: 'home', label: 'Nhà cửa / Đời sống', kw: ['nhà cửa', 'gia dụng', 'nội thất', 'decor', 'nhà bếp', 'lifestyle', 'đời sống', 'dọn nhà', 'đồ dùng gia đình'] },
@@ -26,6 +26,16 @@
         { id: 'entertainment', label: 'Giải trí / Hài', kw: ['giải trí', 'hài', 'comedy', 'vlog', 'trend', 'âm nhạc', 'ca hát', 'dance', 'nhảy', 'kể chuyện'] },
         { id: 'auto', label: 'Xe cộ', kw: ['ô tô', 'oto', 'xe máy', 'xe điện', 'motor', 'xe hơi'] },
         { id: 'pet', label: 'Thú cưng', kw: ['thú cưng', 'pet', 'chó mèo', 'boss', 'con mèo', 'con chó'] },
+        // Audience / persona groups (as used in agency briefs: "Type of channel")
+        { id: 'student', label: 'Học sinh sinh viên / Gen Z', kw: ['học sinh', 'sinh viên', 'hssv', 'gen z', 'genz', 'tân sinh viên', 'đại học', 'youngster'] },
+        { id: 'office', label: 'Nhân viên văn phòng', kw: ['nhân viên văn phòng', 'dân văn phòng', 'công sở', 'người đi làm', 'office'] },
+        { id: 'worker', label: 'Người lao động', kw: ['lao động phổ thông', 'người lao động', 'công nhân', 'lao động sớm', 'shipper', 'tài xế'] },
+        { id: 'couple', label: 'Couple / Tình yêu', kw: ['couple', 'cặp đôi', 'người yêu', 'hẹn hò', 'độc thân', 'tình yêu'] },
+        { id: 'lifestyle', label: 'Lifestyle / Daily vlog', kw: ['lifestyle', 'daily vlog', 'vlog', 'cuộc sống', 'mua sắm', 'shopping', 'self care', 'chăm sóc bản thân'] },
+        { id: 'expert', label: 'Bác sĩ / Chuyên gia', kw: ['bác sĩ', 'chuyên gia', 'dược sĩ', 'chuyên gia dinh dưỡng', 'luật sư', 'doctor', 'giảng viên'] },
+        { id: 'spiritual', label: 'Tâm linh / Chiêm tinh', kw: ['tâm linh', 'chiêm tinh', 'tarot', 'phong thủy', 'cung hoàng đạo', 'thần số học'] },
+        { id: 'community', label: 'Community / Page tổng hợp', kw: ['community', 'page comic', 'comic', 'fanpage', 'page tổng hợp', 'trang tin', 'mass page', 'showbiz', 'group'] },
+        { id: 'kids', label: 'Kid influencer', kw: ['kid influencer', 'kol nhí', 'bé nhà', 'em bé review'] },
     ];
 
     const PLATFORMS = [
@@ -81,11 +91,11 @@
         if (typeof value === 'number') return value;
         const s = String(value).trim().toLowerCase().replace(/\s+/g, '').replace(/₫|vnđ|vnd|đ|%/g, '');
         if (!s) return NaN;
-        const m = s.match(/^(\d[\d.,]*)(k|m|tr|triệu|trieu|b|tỷ|ty)?$/);
+        const m = s.match(/^(\d[\d.,]*)(k|n|nghìn|ngàn|m|tr|triệu|trieu|b|tỷ|ty)?$/);
         if (!m) return NaN;
         let num = m[1];
         const unit = m[2];
-        const multipliers = { k: 1e3, m: 1e6, tr: 1e6, 'triệu': 1e6, trieu: 1e6, b: 1e9, 'tỷ': 1e9, ty: 1e9 };
+        const multipliers = { k: 1e3, n: 1e3, 'nghìn': 1e3, 'ngàn': 1e3, m: 1e6, tr: 1e6, 'triệu': 1e6, trieu: 1e6, b: 1e9, 'tỷ': 1e9, ty: 1e9 };
         const seps = num.match(/[.,]/g) || [];
         if (seps.length === 1 && (unit || !/[.,]\d{3}$/.test(num))) num = num.replace(',', '.');
         else if (seps.length) num = num.replace(/[.,]/g, '');
@@ -109,24 +119,85 @@
         return String(Math.round(n));
     };
 
-    // ================= PRICING =================
-    const calcTax = (cost, taxType) => {
-        if (taxType === 'PIT') return Math.round(cost / 9);
-        if (taxType === 'HKD') return Math.round(cost * 0.07);
-        return 0;
+    // ================= PRICING (agency PRE PNL template) =================
+    // External: C = A × discount% × B ; D = A × B − C
+    // Internal: E = X × O ; F = tax(E) ; G (phí giới thiệu / CB) = D × cb% ; H = G / 9 ; M = backup
+    // K (lợi nhuận gộp) = D − E − F − G − H − M ; L (margin) = K / D
+    const TAX_TYPES = ['PIT', 'VAT', 'HKD'];
+    const taxExact = (amount, taxType) => taxType === 'PIT' ? amount / 9 : (taxType === 'HKD' ? amount * 0.07 : 0);
+    const calcTax = (cost, taxType) => Math.round(taxExact(cost, taxType));
+
+    // Cost backup per committed KPI unit (sheet "COMMIT KPI")
+    const BACKUP_RATES = {
+        TikTok: { view: 3.5, eng: 0 },
+        FB: { view: 15, eng: 35 },
+        YT: { view: 35, eng: 0 },
+        Threads: { view: 0, eng: 700 },
+        Instagram: { view: 15, eng: 0 },
     };
-    /** Selling price from full cost. mode 'margin' = % of selling price; 'markup' = % on top of cost. */
+    const calcBackup = (platform, kpiView, kpiEng) => {
+        const r = BACKUP_RATES[platform] || { view: 0, eng: 0 };
+        return (Number(kpiView) || 0) * r.view + (Number(kpiEng) || 0) * r.eng;
+    };
+
+    const PRICING_DEFAULTS = { mode: 'margin', pct: 35, discountPct: 5, cbPct: 5, roundTo: 100000 };
+
+    /** Full PRE PNL line. All inputs are numbers; results are unrounded (round only for display). */
+    const calcPnl = (i = {}) => {
+        const num0 = (v, d = 0) => { const n = typeof v === 'number' ? v : numOr(v, d); return isFinite(n) ? n : d; };
+        const A = num0(i.A), B = i.B === undefined || i.B === '' ? 1 : num0(i.B);
+        const X = num0(i.X), O = i.O === undefined || i.O === '' ? 1 : num0(i.O);
+        const discountPct = num0(i.discountPct), cbPct = num0(i.cbPct);
+        const view = num0(i.kpiView), eng = num0(i.kpiEng);
+        const C = A * discountPct / 100 * B;
+        const D = A * B - C;
+        const E = X * O;
+        const F = taxExact(E, i.taxType);
+        const G = D * cbPct / 100;
+        const H = G / 9;
+        const M = i.backup !== undefined && i.backup !== null && i.backup !== '' ? num0(i.backup) : calcBackup(i.platform, view, eng);
+        const K = D - E - F - G - H - M;
+        const L = D ? K / D : 0;
+        return { A, B, C, D, X, O, E, F, G, H, M, K, L, discountPct, cbPct, kpiView: view, kpiEng: eng, CPV: view ? D / view : 0, CPE: eng ? D / eng : 0 };
+    };
+
+    const roundUp = (n, step) => step > 0 ? Math.ceil(n / step - 1e-9) * step : Math.round(n);
+
+    /**
+     * Unit selling price A for a target.
+     * mode 'margin': margin L on D reaches pct (after discount, CB, CB tax, booking tax, backup)
+     * mode 'markup': D = (E + F + M) × (1 + pct)
+     */
+    const solvePrice = (i = {}) => {
+        const o = { ...PRICING_DEFAULTS, ...i };
+        const base = calcPnl({ ...o, A: 0 });
+        const cost = base.E + base.F + base.M;
+        if (!cost) return 0;
+        let D;
+        if (o.mode === 'markup') D = cost * (1 + (Number(o.pct) || 0) / 100);
+        else {
+            const denom = 1 - (Number(o.cbPct) || 0) / 100 * 10 / 9 - (Number(o.pct) || 0) / 100;
+            if (denom <= 0) return 0;
+            D = cost / denom;
+        }
+        const B = o.B === undefined || o.B === '' ? 1 : Number(o.B) || 1;
+        const A = D / (B * (1 - (Number(o.discountPct) || 0) / 100));
+        return roundUp(A, Number(o.roundTo) || 0);
+    };
+
+    /** Estimated price to the brand (D) for one deliverable of a KOC (backup not included: KPI unknown at matching time). */
+    const estimatePrice = (koc, pricing = {}) => {
+        const rate = numOr(koc.rate);
+        if (!rate) return 0;
+        const p = { ...PRICING_DEFAULTS, ...pricing };
+        const A = solvePrice({ ...p, X: rate, O: 1, B: 1, taxType: koc.taxType || 'PIT', backup: 0 });
+        return Math.round(calcPnl({ ...p, A, B: 1, X: rate, O: 1, taxType: koc.taxType || 'PIT', backup: 0 }).D);
+    };
+    // kept for compatibility
     const priceFromCost = (fullCost, mode, pct) => {
         pct = Number(pct) || 0;
         if (mode === 'margin') return pct >= 100 ? 0 : Math.round(fullCost / (1 - pct / 100));
         return Math.round(fullCost * (1 + pct / 100));
-    };
-    /** Estimated price to the brand for one deliverable (backup not included: KPI unknown at matching time). */
-    const estimatePrice = (koc, pricing = {}) => {
-        const rate = numOr(koc.rate);
-        if (!rate) return 0;
-        const full = rate + calcTax(rate, koc.taxType || 'PIT');
-        return priceFromCost(full, pricing.mode || 'margin', pricing.pct ?? 20);
     };
 
     // ================= DETECTION =================
@@ -245,7 +316,7 @@
 
     /**
      * Score one KOC against a brief.
-     * ctx: { pricing: {mode,pct}, isBlacklisted(name) -> bool }
+     * ctx: { pricing: {mode,pct,discountPct,cbPct,roundTo}, isBlacklisted(koc) -> bool }
      * Returns { koc, score (0-100), price, excluded (string|null), reasons: [{type:'good'|'warn'|'bad'|'info', text}] }
      */
     const scoreKoc = (koc, briefIn, ctx = {}) => {
@@ -257,7 +328,7 @@
         let score = 0;
 
         // ---- Hard filters ----
-        if (ctx.isBlacklisted && ctx.isBlacklisted(koc.name)) excluded = 'Nằm trong blacklist';
+        if (ctx.isBlacklisted && ctx.isBlacklisted(koc)) excluded = 'Nằm trong blacklist';
         else if (brief.platforms.length && !brief.platforms.includes(normalizePlatform(koc.platform))) excluded = `Nền tảng ${koc.platform || '?'} không có trong brief`;
         else if (brief.totalBudget && price > brief.totalBudget) excluded = 'Giá vượt tổng ngân sách';
         else if (koc.status === 'inactive') excluded = 'KOC đang tạm ngưng hợp tác';
@@ -415,33 +486,127 @@
         return rows.filter(r => r.some(c => String(c).trim() !== ''));
     };
 
-    const COLUMN_ALIASES = {
-        name: ['tên', 'ten', 'name', 'koc', 'kol', 'tên koc', 'tên kênh', 'kênh', 'creator'],
-        platform: ['nền tảng', 'platform', 'mxh', 'mạng xã hội'],
-        link: ['link', 'url', 'link kênh', 'profile'],
-        contact: ['contact', 'liên hệ', 'sđt', 'sdt', 'zalo', 'phone', 'số điện thoại'],
-        followers: ['followers', 'follower', 'follow', 'lượt theo dõi', 'người theo dõi', 'subs', 'subscribers'],
-        avgViews: ['view tb', 'avg views', 'average views', 'view trung bình', 'lượt xem tb', 'views', 'view'],
-        er: ['er', 'er (%)', 'engagement', 'engagement rate', 'tỷ lệ tương tác', 'tương tác'],
-        categories: ['ngành', 'lĩnh vực', 'category', 'categories', 'chủ đề', 'niche', 'ngành hàng'],
-        gender: ['giới tính khán giả', 'giới tính', 'gender', 'audience gender'],
-        ages: ['độ tuổi khán giả', 'độ tuổi', 'age', 'ages', 'audience age'],
-        location: ['khu vực', 'location', 'tỉnh', 'thành phố', 'vùng'],
-        rate: ['giá nhập', 'giá', 'rate', 'cost', 'chi phí', 'báo giá', 'giá booking'],
-        taxType: ['loại thuế', 'thuế', 'tax', 'tax type'],
-        rating: ['đánh giá', 'rating', 'điểm'],
-        notes: ['ghi chú', 'notes', 'note', 'mô tả', 'phong cách', 'style'],
+    // Column recognition: exact header names first, then patterns. Headers are normalized (lowercase, single spaces).
+    const FIELD_RULES = {
+        koc: [
+            ['name', ['tên', 'ten', 'name', 'koc', 'kol', 'kols', 'kocs', 'tên koc', 'tên kol', 'tên kênh', 'kênh', 'creator', 'influencer', 'kols/kocs', 'hạng mục'], /^(tên|kols?|kocs?)\b/],
+            ['platform', ['nền tảng', 'platform', 'mxh', 'mạng xã hội'], /nền tảng|platform/],
+            ['link', ['link', 'url', 'link kênh', 'profile', 'link profile', 'channel'], /^link|url/],
+            ['contact', ['contact', 'liên hệ', 'sđt', 'sdt', 'zalo', 'phone', 'số điện thoại', 'email'], /contact|liên hệ|sđt|điện thoại/],
+            ['followers', ['followers', 'follower', 'follow', 'lượt theo dõi', 'người theo dõi', 'subs', 'subscribers', 'social'], /follow|theo dõi|subscriber/],
+            ['avgViews', ['view tb', 'avg views', 'avg view', 'average views', 'view trung bình', 'lượt xem tb', 'lượt xem trung bình'], /view (tb|trung bình)|avg/],
+            ['er', ['er', 'er (%)', 'engagement rate', 'tỷ lệ tương tác'], /engagement rate|tỷ lệ tương tác/],
+            ['categories', ['ngành', 'lĩnh vực', 'category', 'categories', 'chủ đề', 'niche', 'ngành hàng', 'nhóm', 'nhóm koc', 'type of channel', 'phân loại', 'nhóm/ngành'], /ngành|lĩnh vực|categor|type of channel/],
+            ['gender', ['giới tính khán giả', 'giới tính', 'gender', 'audience gender', 'giới tính kg'], /giới tính|gender/],
+            ['ages', ['độ tuổi khán giả', 'độ tuổi', 'age', 'ages', 'audience age', 'độ tuổi kg'], /độ tuổi|\bage/],
+            ['location', ['khu vực', 'location', 'tỉnh', 'thành phố', 'vùng'], /khu vực|location/],
+            ['rate', ['giá nhập', 'cost booking', 'đơn giá booking', 'đơn giá booking (x)', 'internal cost', 'internal cost tm', 'giá booking', 'giá gốc', 'rate', 'cost'], /cost booking|đơn giá booking|internal cost|giá nhập/],
+            ['lastQuote', ['chi phí', 'chi phí (a)', 'external cost', 'giá bán', 'giá bán gần nhất', 'báo giá', 'đơn giá'], /^chi phí( \(a\))?$|external cost|giá bán/],
+            ['scope', ['hạng mục công việc', 'scope', 'scope of work', 'hạng mục cv'], /hạng mục công việc|scope/],
+            ['taxType', ['loại thuế', 'loại thuế (y)', 'thuế', 'tax', 'tax type'], /^loại thuế/],
+            ['rating', ['đánh giá', 'rating', 'điểm'], null],
+            ['paymentTerm', ['payment term', 'thanh toán', 'điều khoản thanh toán'], /payment/],
+            ['notes', ['ghi chú', 'notes', 'note', 'note (internal)', 'mô tả', 'phong cách', 'style'], /^note|ghi chú/],
+        ],
+        blacklist: [
+            ['name', ['name', 'tên', 'kol', 'koc', 'kols', 'kocs', 'tên kênh', 'kênh'], /^(tên|name|kols?|kocs?)\b/],
+            ['link', ['link', 'link kênh', 'url', 'profile'], /^link|url/],
+            ['project', ['dự án', 'project', 'campaign', 'chiến dịch'], /dự án|campaign/],
+            ['reason', ['note', 'lý do', 'ghi chú', 'reason', 'nguyên nhân'], /lý do|note|ghi chú/],
+        ],
     };
-    const mapHeader = (h) => {
-        const t = norm(h);
-        for (const [field, aliases] of Object.entries(COLUMN_ALIASES)) if (aliases.includes(t)) return field;
-        for (const [field, aliases] of Object.entries(COLUMN_ALIASES)) if (aliases.some(a => a.length > 3 && t.includes(a))) return field;
+    const FIELD_LABELS = {
+        name: 'Tên', platform: 'Nền tảng', link: 'Link', contact: 'Contact', followers: 'Followers', avgViews: 'View TB', er: 'ER (%)',
+        categories: 'Nhóm / Ngành', gender: 'Giới tính khán giả', ages: 'Độ tuổi khán giả', location: 'Khu vực', rate: 'Giá nhập (đơn giá booking)',
+        lastQuote: 'Giá bán gần nhất', scope: 'Hạng mục công việc', taxType: 'Loại thuế', rating: 'Đánh giá', paymentTerm: 'Payment term', notes: 'Ghi chú',
+        project: 'Dự án', reason: 'Lý do',
+    };
+    const normHeader = (h) => norm(String(h ?? '').replace(/[\r\n]+/g, ' ')).replace(/:$/, '');
+    const mapHeader = (h, target = 'koc') => {
+        const t = normHeader(h);
+        if (!t) return null;
+        const rules = FIELD_RULES[target] || FIELD_RULES.koc;
+        for (const [field, exact] of rules) if (exact.includes(t)) return field;
+        for (const [field, , re] of rules) if (re && re.test(t)) return field;
         return null;
+    };
+    const mapHeaderRow = (cells, target) => {
+        const used = new Set();
+        return cells.map(c => { const f = mapHeader(c, target); if (!f || used.has(f)) return null; used.add(f); return f; });
+    };
+    const scoreHeader = (fields, target) => {
+        const set = new Set(fields.filter(Boolean));
+        const key = target === 'blacklist' ? (set.has('name') || set.has('link')) : set.has('name');
+        return key ? set.size : 0;
+    };
+
+    /**
+     * Find the header row in a sheet-like 2D array (title rows, 2-level merged headers are common in agency files).
+     * Returns { headerRow, dataStart, labels[], fields[] } or null.
+     */
+    const detectTable = (rows, target = 'koc') => {
+        let best = null;
+        const limit = Math.min(rows.length, 25);
+        for (let r = 0; r < limit; r++) {
+            if ((rows[r] || []).filter(c => String(c ?? '').trim() !== '').length < 2) continue; // titles / blank rows are not headers
+            const width = Math.max(rows[r].length, (rows[r + 1] || []).length);
+            const single = Array.from({ length: width }, (_, i) => rows[r][i] ?? '');
+            const combined = single.map((c, i) => {
+                const below = (rows[r + 1] || [])[i];
+                return below !== undefined && below !== null && String(below).trim() !== '' && isNaN(numOr(below, NaN)) ? below : c;
+            });
+            for (const [labels, dataStart] of [[single, r + 1], [combined, r + 2]]) {
+                const fields = mapHeaderRow(labels, target);
+                const score = scoreHeader(fields, target);
+                if (score && (!best || score > best.score)) best = { headerRow: r, dataStart, labels: labels.map(l => String(l ?? '').replace(/\s+/g, ' ').trim()), fields, score };
+            }
+        }
+        return best;
+    };
+
+    const SECTION_RE = /^\s*([A-Z]|[IVX]{1,4})\s*[.)]\s*(\S.*)$/;
+    /** Rows -> objects using a field mapping. Section rows like "A. BOOKING ON TIKTOK" are attached to following rows. */
+    const tableToObjects = (rows, table, fields) => {
+        const out = [];
+        let section = '';
+        let skipped = 0;
+        const keyField = fields.includes('name') ? 'name' : 'link';
+        for (let r = table.dataStart; r < rows.length; r++) {
+            const cells = rows[r] || [];
+            const nonEmpty = cells.map(c => String(c ?? '').trim()).filter(Boolean);
+            if (!nonEmpty.length) continue;
+            const obj = {};
+            fields.forEach((f, i) => { if (f && obj[f] === undefined) { const v = cells[i]; if (v !== undefined && v !== null && String(v).trim() !== '') obj[f] = v; } });
+            if (!obj[keyField]) {
+                const m = nonEmpty.length <= 2 && String(nonEmpty[0]).match(SECTION_RE);
+                if (m) section = m[2].trim();
+                else skipped++;
+                continue;
+            }
+            if (/^(tổng|total|vat|margin)/i.test(String(obj[keyField]))) continue;
+            if (section) obj.section = section;
+            out.push(obj);
+        }
+        return { objects: out, skipped };
+    };
+
+    /** Section label ("BOOKING ON TIKTOK", "GIA ĐÌNH") -> platform and categories hints. */
+    const applySection = (obj) => {
+        if (!obj.section) return obj;
+        const plat = detectPlatforms(obj.section)[0];
+        if (plat && !obj.platform) obj.platform = plat;
+        const cats = detectCategories(obj.section);
+        if (cats.length) obj.categories = [...asArray(obj.categories), ...cats].join(', ');
+        if (!plat && !cats.length) obj.tags = [obj.tags, obj.section].filter(Boolean).join(' ');
+        return obj;
     };
 
     /** Convert a raw row object (strings) into a clean KOC record. */
     const normalizeKoc = (r = {}) => {
-        const cats = asArray(r.categories).flatMap(c => CATEGORIES.find(x => x.id === c) ? [c] : (CATEGORIES.find(x => norm(x.label) === norm(c)) ? [CATEGORIES.find(x => norm(x.label) === norm(c)).id] : detectCategories(c)));
+        const catLabel = (c) => CATEGORIES.find(x => norm(x.label) === norm(c));
+        // split on , ; | only: labels themselves contain "/" ("Làm đẹp / Mỹ phẩm")
+        const catParts = Array.isArray(r.categories) ? r.categories : String(r.categories || '').split(/[,;|]+/).map(x => x.trim()).filter(Boolean);
+        const cats = catParts.flatMap(c => CATEGORIES.find(x => x.id === c) ? [c] : (catLabel(c) ? [catLabel(c).id] : detectCategories(c)));
         const tax = String(r.taxType || '').toUpperCase().trim();
         return {
             id: r.id || ('k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
@@ -457,39 +622,67 @@
             ages: normalizeAges(r.ages),
             location: LOCATIONS.find(l => l.id === r.location)?.id || detectLocations(r.location)[0] || String(r.location || '').trim(),
             rate: Math.round(numOr(r.rate)),
-            taxType: ['PIT', 'VAT', 'HKD'].includes(tax) ? tax : 'PIT',
+            lastQuote: Math.round(numOr(r.lastQuote)),
+            scope: String(r.scope || '').trim(),
+            taxType: TAX_TYPES.includes(tax) ? tax : 'PIT',
             rating: Math.min(5, Math.max(0, numOr(r.rating))),
+            paymentTerm: String(r.paymentTerm || '').trim(),
             notes: String(r.notes || '').trim(),
             tags: String(r.tags || '').trim(),
             status: r.status === 'inactive' ? 'inactive' : 'active',
             demo: !!r.demo,
+            analysis: r.analysis && typeof r.analysis === 'object' ? r.analysis : null,
             updatedAt: r.updatedAt || new Date().toISOString(),
         };
     };
 
-    /** Parse pasted Excel/Sheets data or CSV text into KOC records. Returns { kocs, unknownHeaders, skipped }. */
+    const normalizeBlacklistEntry = (r = {}) => ({
+        id: r.id || ('b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
+        name: String(r.name || '').trim(),
+        link: String(r.link || '').trim(),
+        project: String(r.project || '').trim(),
+        reason: String(r.reason || '').trim(),
+        updatedAt: r.updatedAt || new Date().toISOString(),
+    });
+
+    /** TikTok/YouTube handle from a profile link, for matching ("https://www.tiktok.com/@abc?x" -> "tiktok:abc"). */
+    const handleFromLink = (link) => {
+        const t = String(link || '').trim().toLowerCase();
+        const m = t.match(/tiktok\.com\/@([^/?#]+)/) || t.match(/youtube\.com\/(@[^/?#]+)/) || t.match(/(?:facebook|instagram|threads)\.(?:com|net)\/(?:@)?([^/?#]+)/);
+        if (!m) return '';
+        const site = /tiktok/.test(t) ? 'tiktok' : /youtube/.test(t) ? 'youtube' : /facebook/.test(t) ? 'facebook' : /instagram/.test(t) ? 'instagram' : 'threads';
+        return site + ':' + decodeURIComponent(m[1]).replace(/^@/, '');
+    };
+
+    /**
+     * Import a 2D array (from pasted text or an .xlsx sheet).
+     * Returns { table, records, skipped, unknownHeaders, error } — records are normalized KOCs or blacklist entries.
+     */
+    const importTable = (rows, { target = 'koc', fields: fieldOverride } = {}) => {
+        const clean = (rows || []).map(r => (r || []).map(c => (c === null || c === undefined) ? '' : c));
+        const table = detectTable(clean, target);
+        if (!table && !fieldOverride) return { table: null, records: [], skipped: 0, unknownHeaders: [], error: target === 'blacklist' ? 'Không tìm thấy cột Tên hoặc Link' : 'Không tìm thấy cột Tên KOC' };
+        const t = table || { headerRow: 0, dataStart: 1, labels: clean[0].map(String), fields: [] };
+        const fields = fieldOverride || t.fields;
+        const { objects, skipped } = tableToObjects(clean, t, fields);
+        const records = objects.map(o => target === 'blacklist' ? normalizeBlacklistEntry(o) : normalizeKoc(applySection(o)));
+        const unknownHeaders = t.labels.filter((l, i) => l && !fields[i]);
+        return { table: { ...t, fields }, records, skipped, unknownHeaders };
+    };
+
+    /** Backward-compatible text import (pasted Excel/Sheets or CSV). Returns { kocs, unknownHeaders, skipped, error }. */
     const importKocsFromText = (text) => {
         const rows = parseDelimited(text);
         if (rows.length < 2) return { kocs: [], unknownHeaders: [], skipped: rows.length, error: 'Cần có dòng tiêu đề và ít nhất 1 dòng dữ liệu' };
-        const headers = rows[0].map(mapHeader);
-        if (!headers.includes('name')) return { kocs: [], unknownHeaders: [], skipped: rows.length - 1, error: 'Không tìm thấy cột Tên (name)' };
-        const unknownHeaders = rows[0].filter((h, i) => !headers[i] && String(h).trim());
-        const kocs = [];
-        let skipped = 0;
-        rows.slice(1).forEach(cells => {
-            const obj = {};
-            headers.forEach((f, i) => { if (f && cells[i] !== undefined && obj[f] === undefined) obj[f] = cells[i]; });
-            if (!String(obj.name || '').trim()) { skipped++; return; }
-            kocs.push(normalizeKoc(obj));
-        });
-        return { kocs, unknownHeaders, skipped };
+        const r = importTable(rows, { target: 'koc' });
+        return { kocs: r.records, unknownHeaders: r.unknownHeaders, skipped: r.skipped, error: r.error, table: r.table };
     };
 
     const EXPORT_COLUMNS = [
         ['name', 'Tên'], ['platform', 'Nền tảng'], ['link', 'Link'], ['contact', 'Contact'], ['followers', 'Followers'],
         ['avgViews', 'View TB'], ['er', 'ER (%)'], ['categories', 'Ngành'], ['gender', 'Giới tính khán giả'],
-        ['ages', 'Độ tuổi khán giả'], ['location', 'Khu vực'], ['rate', 'Giá nhập'], ['taxType', 'Loại thuế'],
-        ['rating', 'Đánh giá'], ['notes', 'Ghi chú'],
+        ['ages', 'Độ tuổi khán giả'], ['location', 'Khu vực'], ['rate', 'Giá nhập'], ['lastQuote', 'Giá bán gần nhất'],
+        ['taxType', 'Loại thuế'], ['scope', 'Hạng mục công việc'], ['rating', 'Đánh giá'], ['paymentTerm', 'Payment term'], ['notes', 'Ghi chú'],
     ];
     const csvCell = (v) => { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const exportKocsToCsv = (kocs) => {
@@ -506,12 +699,132 @@
         return '﻿' + lines.join('\r\n');
     };
 
+
+    // ================= PAGE GRAB ANALYSIS (data sent by the bookmarklet) =================
+    const removeDiacritics = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+    const median = (arr) => {
+        const a = arr.filter(n => n > 0).sort((x, y) => x - y);
+        if (!a.length) return 0;
+        const mid = Math.floor(a.length / 2);
+        return a.length % 2 ? a[mid] : Math.round((a[mid - 1] + a[mid]) / 2);
+    };
+
+    /** WebVTT / SRT subtitles -> plain text (deduplicated lines). */
+    const parseSubtitles = (raw) => {
+        const lines = String(raw || '').replace(/\r/g, '').split('\n');
+        const out = [];
+        for (const line of lines) {
+            const l = line.trim();
+            if (!l || /^WEBVTT/.test(l) || /^\d+$/.test(l) || /-->/.test(l) || /^(NOTE|STYLE|REGION)\b/.test(l)) continue;
+            const clean = l.replace(/<[^>]+>/g, '').trim();
+            if (clean && out[out.length - 1] !== clean) out.push(clean);
+        }
+        return out.join(' ').replace(/\s{2,}/g, ' ').trim();
+    };
+
+    const SPONSORED_RE = /(#ad\b|#ads\b|#quangcao|#quảngcáo|#sponsored|#hoptac|#hợptác|#partner|#tiktokshop|#affiliate|hợp tác (cùng|với)|tài trợ|nhà tài trợ|link (ở |trong )?bio|giỏ hàng|mã giảm giá|\bvoucher\b|\bcode giảm\b|sponsored by|in partnership)/i;
+    const HASHTAG_RE = /#([\p{L}\p{N}_]+)/gu;
+
+    const categoryCounts = (texts) => {
+        const counts = {};
+        texts.forEach(t => detectCategories(t).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
+        return counts;
+    };
+
+    /**
+     * Rule-based analysis of the data a bookmarklet grabbed from a TikTok (or other) page.
+     * Returns a summary object and a KOC-shaped draft (not yet normalized).
+     */
+    const summarizeGrab = (p = {}) => {
+        const videos = Array.isArray(p.videos) ? p.videos.slice(0, 60) : [];
+        const cleanDesc = (d) => String(d || '').replace(/\s+created by .*$/i, '').replace(/\s+được tạo bởi .*$/i, '').trim();
+        const captions = videos.map(v => cleanDesc(v.desc)).filter(Boolean);
+        const video = p.video && typeof p.video === 'object' ? p.video : null;
+        const transcript = video && video.transcriptRaw ? parseSubtitles(video.transcriptRaw).slice(0, 12000) : '';
+        if (video && video.desc) captions.unshift(cleanDesc(video.desc));
+
+        const followers = Math.round(numOr(p.followers) || numOr(p.followersText));
+        const totalLikes = Math.round(numOr(p.likes) || numOr(p.likesText));
+        const videoCount = Math.round(numOr(p.videoCount));
+        const gridViews = videos.filter(v => !v.pinned).map(v => Math.round(numOr(v.views) || numOr(v.viewsText)));
+        let avgViews = median(gridViews);
+        if (!avgViews && video) avgViews = Math.round(numOr(video.views) || numOr(video.viewsText));
+
+        let er = 0, erSource = '';
+        if (video && numOr(video.views) > 0) {
+            const inter = numOr(video.likes) + numOr(video.comments) + numOr(video.shares);
+            er = inter / numOr(video.views) * 100;
+            erSource = 'video đang xem';
+        } else if (totalLikes && videoCount && gridViews.length) {
+            // average likes per video vs average (not median) views, both means over the channel
+            const allViews = videos.map(v => Math.round(numOr(v.views) || numOr(v.viewsText))).filter(n => n > 0);
+            const meanViews = allViews.reduce((a, b) => a + b, 0) / (allViews.length || 1);
+            er = meanViews ? (totalLikes / videoCount) / meanViews * 100 : 0;
+            erSource = 'ước tính từ tổng tim / số video';
+        }
+        er = Math.round(Math.min(50, Math.max(0, er)) * 10) / 10;
+
+        const allTexts = [p.bio || '', ...captions, transcript].filter(Boolean);
+        const counts = categoryCounts(allTexts);
+        const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        const top = ranked.length ? ranked[0][1] : 0;
+        const categories = ranked.filter(([, n], i) => i < 3 && (n >= 2 || n === top)).map(([c]) => c);
+
+        const tagCounts = {};
+        captions.forEach(c => { for (const m of c.matchAll(HASHTAG_RE)) { const t = m[1].toLowerCase(); if (!/^(fyp|foryou|foryoupage|xuhuong|viral|trending|tiktok|xh|fypシ)$/.test(t)) tagCounts[t] = (tagCounts[t] || 0) + 1; } });
+        const hashtags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([t]) => t);
+
+        const sponsoredCount = captions.filter(c => SPONSORED_RE.test(c)).length;
+        const sponsoredRatio = captions.length ? sponsoredCount / captions.length : 0;
+        const locations = detectLocations(allTexts.join(' \n '));
+
+        const handle = String(p.handle || '').replace(/^@/, '');
+        const platform = p.source === 'tiktok' ? 'TikTok' : (p.source === 'youtube' ? 'YT' : (detectPlatforms(p.url || '')[0] || ''));
+        const link = p.source === 'tiktok' && handle ? `https://www.tiktok.com/@${handle}` : String(p.url || '').split('?')[0];
+
+        return {
+            name: String(p.name || handle || '').trim(),
+            handle, platform, link,
+            bio: String(p.bio || '').trim(),
+            followers, totalLikes, videoCount, avgViews, er, erSource,
+            videosAnalyzed: captions.length, captions, transcript,
+            categories, categoryCounts: counts, hashtags, locations,
+            sponsoredCount, sponsoredRatio,
+            isVideo: !!video, videoUrl: p.type === 'video' ? String(p.url || '') : '',
+            stale: !!(video && video.stale), transcriptError: !!(video && video.transcriptError),
+        };
+    };
+
+    /** Build TikTok search terms and hashtags from a brief (no AI). */
+    const buildSearchTerms = (briefIn) => {
+        const b = normalizeBrief(briefIn);
+        const terms = [];
+        if (b.product) terms.push(`review ${b.product}`);
+        b.keywords.forEach(k => terms.push(k));
+        const SEARCH_CITY = { 'TP.HCM': 'sài gòn', 'Hà Nội': 'hà nội', 'Đà Nẵng': 'đà nẵng', 'Cần Thơ': 'cần thơ', 'Hải Phòng': 'hải phòng' };
+        const city = SEARCH_CITY[b.locations.find(l => SEARCH_CITY[l])];
+        b.categories.forEach(id => {
+            const c = CATEGORIES.find(x => x.id === id);
+            if (!c) return;
+            const kws = c.kw.filter(k => k.length > 3 && !/^[a-z&]+$/i.test(k) || ['skincare', 'makeup', 'gaming', 'fitness', 'mukbang', 'outfit'].includes(k)).slice(0, 3);
+            kws.forEach(k => terms.push(`review ${k}`));
+            if (city && ['fnb', 'travel', 'beauty', 'health'].includes(id)) terms.push(`${kws[0] || c.label} ${city}`);
+        });
+        if (b.gender === 'nu' && b.categories.includes('beauty')) terms.push('beauty blogger');
+        const uniqTerms = uniq(terms.map(t => t.trim().toLowerCase()).filter(Boolean)).slice(0, 10);
+        const hashtags = uniq(uniqTerms.map(t => removeDiacritics(t).replace(/[^a-z0-9]/gi, '').toLowerCase()).filter(t => t.length >= 4)).slice(0, 10);
+        return { terms: uniqTerms, hashtags };
+    };
+
     return {
+        removeDiacritics, median, parseSubtitles, summarizeGrab, buildSearchTerms,
         CATEGORIES, PLATFORMS, TIERS, AGES, GENDERS, LOCATIONS, WEIGHTS,
         parseNumber, formatShort, formatFollowers, norm,
         calcTax, priceFromCost, estimatePrice,
         detectCategories, detectPlatforms, detectLocations, normalizePlatform, normalizeGender, normalizeAges, tierOf,
         parseBriefText, normalizeBrief, scoreKoc, rankKocs, pickShortlist,
         parseDelimited, importKocsFromText, normalizeKoc, exportKocsToCsv, EXPORT_COLUMNS,
+        TAX_TYPES, BACKUP_RATES, PRICING_DEFAULTS, calcBackup, calcPnl, solvePrice, roundUp,
+        FIELD_RULES, FIELD_LABELS, mapHeader, detectTable, importTable, normalizeBlacklistEntry, handleFromLink,
     };
 });

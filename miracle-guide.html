@@ -70,8 +70,8 @@
                     </div>
                 </div>
                 <ul class="text-gray-300 space-y-3 text-sm">
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>⚙️ Cài đặt:</b> nhập <b>Tên agency</b> (dùng trong tin nhắn gửi KOC), Gemini API Key (không bắt buộc) và blacklist của agency.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Kho KOC:</b> dán danh sách KOC từ Excel/Google Sheets (bấm <b>File mẫu</b> để xem đúng các cột). Muốn thử trước thì bấm <b>Dữ liệu mẫu</b>.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>⚙️ Cài đặt:</b> nhập <b>Tên agency</b> (dùng trong tin nhắn gửi KOC), Gemini API Key (không bắt buộc) và kết nối <a href="#sync" class="underline">Google Sheets</a> nếu làm theo team.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Kho KOC:</b> chọn file NB LIST / PRE PNL có sẵn của agency (hoặc dán bảng) để nạp KOC và giá; nhập sheet BLACKLIST. Muốn thử trước thì bấm <b>Dữ liệu mẫu</b>.</li>
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>Brief & Gợi ý KOC:</b> dán brief của brand ➝ bấm <b>Gợi ý KOC phù hợp</b> ➝ <b>Tự chọn shortlist theo ngân sách</b>.</li>
                 </ul>
             </div>
@@ -95,6 +95,7 @@
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>Giá bán ước tính</b> = (Giá nhập + Thuế) cộng margin theo cài đặt ở tab Proceed External (chưa gồm phí backup vì chưa có KPI).</li>
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>Shortlist:</b> chọn tay hoặc bấm <b>Tự chọn shortlist theo ngân sách</b> (lấy điểm cao nhất, không vượt ngân sách, không trùng người). <b>Copy gửi brand</b> không lộ giá nhập; <b>Copy nội bộ</b> có giá nhập, điểm và lý do.</li>
                     <li><i class="fas fa-check text-green-400 mr-2"></i><b>Đi tiếp:</b> nút <b>Xin giá</b> mở tab Scouting đã điền sẵn brand và hạng mục; nút <b>PNL</b> điền sẵn tên, link, giá nhập, thuế vào Proceed Internal.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Tìm thêm KOC trên TikTok:</b> bấm <b>⚡ Tạo từ khóa</b> hoặc <b>✨ AI gợi ý</b> để có danh sách link tìm tài khoản, video và hashtag trên TikTok theo đúng brief. Gặp profile hợp thì bấm bookmark <b>🪄 Phân tích KOC</b>.</li>
                 </ul>
             </div>
 
@@ -110,11 +111,11 @@
                     </div>
                 </div>
                 <ul class="text-gray-300 space-y-3 text-sm">
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Dán từ Excel/Sheets:</b> bôi đen bảng kèm dòng tiêu đề và dán vào. Tool tự nhận cột tiếng Việt hoặc tiếng Anh: Tên, Nền tảng, Link, Contact, Followers, View TB, ER (%), Ngành, Giới tính khán giả, Độ tuổi khán giả, Khu vực, Giá nhập, Loại thuế, Đánh giá, Ghi chú. Chỉ cột Tên là bắt buộc.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Ngành</b> có thể ghi tự nhiên (VD: "mỹ phẩm, skincare"), tool tự quy về nhóm ngành. Số viết tắt được: <code>120k</code>, <code>1,2M</code>, <code>8tr</code>.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Không trùng lặp:</b> nhập lại cùng KOC (cùng link, hoặc cùng tên + nền tảng) sẽ cập nhật thông tin thay vì tạo dòng mới.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Import/Export CSV</b> để chia sẻ kho KOC cho cả team. Từ tab Proceed Internal (hoặc Magic Bookmarklet) có nút <b>Lưu KOC này vào Kho KOC</b>.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Dữ liệu càng đủ, gợi ý càng chuẩn:</b> nên điền ngành, view TB, ER, khán giả và giá nhập. Trường nào thiếu sẽ chỉ được nửa điểm.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Nhập từ Excel / Google Sheets / CSV:</b> chọn thẳng file <code>.xlsx</code> (tool tự chọn sheet hợp nhất, VD NB LIST) hoặc dán bảng. Nhận được file của agency: bỏ qua dòng tiêu đề lớn, tiêu đề 2 tầng, dòng tổng; dòng "A. BOOKING ON TIKTOK" / "B. GIA ĐÌNH" được dùng làm nền tảng / nhóm.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>"Chi phí" là giá bán, "Cost Booking / Đơn giá booking (X)" là giá nhập</b>; tool hiển thị bảng nhận diện cột để bạn sửa nếu nhận sai.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Nhóm KOC / Ngành</b> gồm cả nhóm chân dung hay dùng trong brief: Học sinh sinh viên / Gen Z, Mẹ bỉm / Gia đình, Nhân viên văn phòng, Người lao động, Couple, Lifestyle, Bác sĩ / Chuyên gia, Tâm linh, Community / Page tổng hợp...</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Blacklist</b> nằm ngay trong tab này: thêm tay hoặc nhập sheet BLACKLIST (Dự án, Name, Link kênh, Note). Khớp theo tên <b>hoặc link kênh</b> (kể cả khi KOL đổi tên).</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Không trùng lặp:</b> nhập lại cùng KOC (cùng link, hoặc cùng tên + nền tảng) sẽ cập nhật thay vì tạo dòng mới. Export CSV để chia sẻ, hoặc dùng <a href="#sync" class="underline">đồng bộ Google Sheets</a>.</li>
                 </ul>
             </div>
 
@@ -154,16 +155,11 @@
                     </div>
                 </div>
                 <ul class="text-gray-300 space-y-3 text-sm">
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Tự Động Tính Cước:</b> Nhập Lương KOL (Giá
-                        chưa thuế, gõ tắt được: <code>10tr</code>, <code>500k</code>, <code>10.000.000</code>). Chọn loại
-                        thuế (PIT = Lương/9, VAT = 0, HKD = 7%), hệ thống tự tính Thuế, Phí Backup (KPI × hệ số nền tảng:
-                        TikTok 3,5 · FB/YT 35 · Threads 700) và <b>Tổng giá vốn</b>.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Contact:</b> Ô SĐT/Zalo được xuất vào cột Contact của file PNL.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Xuất Excel Dòng Kẻ:</b> Nút <b>"COPY DÒNG
-                            PNL"</b> giúp copy đúng 1 hàng dài chứa 22 cột chuẩn format nội bộ.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>🗄️ Lưu Vào Kho:</b> Nút xanh lá <b>"💾 LƯU
-                            VÀO KHO PNL"</b> sẽ ghi nhớ lại số liệu KOL này vào cơ sở dữ liệu (Database) để tí nữa kết
-                        xuất 1 thể.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Internal cost theo template PRE PNL:</b> nhập Đơn giá booking (X) và Số lượng booking (O) → Total cost <b>E = X × O</b>. Gõ tắt được <code>5tr</code>, <code>500k</code>.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Thuế booking (F):</b> PIT = E / 9 · VAT = 0 · HKD = E × 7%.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Cost backup (M)</b> theo sheet COMMIT KPI: TikTok = KPI View × 3,5 · Facebook = View × 15 + Engagement × 35 · YouTube = View × 35 · Instagram = View × 15 · Threads = Engagement × 700.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Contact, Link kênh, Followers, Hạng mục công việc, Payment term</b> được xuất đúng cột của PRE PNL / NB LIST.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>🗄️ Lưu vào kho PNL</b> để tổng hợp và copy hàng loạt; nút <b>Lưu KOC này vào Kho KOC</b> để dùng cho brief sau.</li>
                 </ul>
             </div>
 
@@ -179,12 +175,11 @@
                     </div>
                 </div>
                 <ul class="text-gray-300 space-y-3 text-sm">
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Tính Lợi Nhuận Gộp (Margin):</b> Chỉ cần gõ
-                        mức % Margin mục tiêu (VD: 25%), hệ thống tính Giá Bán Ra = Tổng giá vốn ÷ (1 − 25%). Lợi nhuận
-                        gộp sau khi trừ Lương, Thuế và Backup sẽ đúng bằng 25% giá bán.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Markup:</b> Nếu quen cách tính cũ, đổi "Cách tính giá bán" sang Markup để cộng thêm % trên giá vốn. Tool nhớ lựa chọn của bạn.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i>Copy trực tiếp Báo Giá Dành Cho Khách (Chỉ có
-                        tên, hạng mục, giá bán) ra Excel/Slides mà không lo lộ giá gốc.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Giá bán (A) tự tính theo margin mục tiêu</b> (mặc định 35%), đã trừ đủ: Giảm giá C = A × % × B, Thành tiền <b>D = A × B − C</b>, phí giới thiệu <b>G = D × %</b>, thuế CB <b>H = G / 9</b>, thuế booking F và cost backup M.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Lợi nhuận gộp K = D − E − F − G − H − M</b>, <b>Margin L = K / D</b>, đúng như template PRE PNL. Có thể làm tròn giá bán lên 100.000 / 500.000.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Cách tính khác:</b> Markup % trên tổng chi phí, hoặc <b>Tự nhập giá bán</b> (tool cảnh báo nếu margin thấp hơn mức tối thiểu).</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>% Giảm giá và % CB</b> chỉnh theo yêu cầu leader của từng dự án; tool nhớ lựa chọn.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Copy dòng báo giá (EXT):</b> 14 cột như file Quotation (Stt, KOL, Social, Hạng mục, Chi phí, Đơn vị, Số lượng, Giảm giá, Thành tiền, View, CPV, Engagement, CPE, Note). Không có giá nội bộ.</li>
                 </ul>
             </div>
 
@@ -239,18 +234,52 @@
                     </div>
                 </div>
                 <ul class="text-gray-300 space-y-3 text-sm">
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>KPI Dashboard:</b> Theo dõi doanh thu và lợi
-                        nhuận gộp (Margin) realtime của tất cả các KOC bạn đã "Lưu Vào Kho PNL" ở tab Proceed Internal.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Copy Toàn Bộ:</b> Chỉ cần bấm 1 nút là
-                        <b>xuất được chính xác 22 Cột</b> theo bảng Excel chuẩn của Công Ty (từ STT, Contact, Profit cho
-                        đến Loại Thuế). Đảm bảo Copy Paste không thừa không thiếu 1 lề nào.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i>Lưu ý: Dữ liệu này lưu trong `Trình duyệt` của
-                        bạn. Dù mất điện F5 lại vẫn còn. Phải ấn "XÓA HẾT" thì nó mới trắng tinh. Có thể xóa từng dòng bằng nút ✕.</li>
-                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Sao lưu / Khôi phục:</b> Bấm "Sao lưu (JSON)" để tải file dự phòng, dùng khi đổi máy, đổi trình duyệt hoặc trước khi xóa cache. "Khôi phục" cho phép thay thế hoặc gộp dữ liệu.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Tổng chi phí (Σ D), VAT 8%, tổng gồm VAT, Total gross profit (Σ K) và Margin</b> của tất cả dòng đã lưu.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>3 kiểu copy:</b> <b>PRE PNL</b> (25 cột, STT → CPE), <b>NB LIST</b> (format workfile, kèm Payment term), <b>Báo giá EXT</b> (gửi khách).</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Báo cáo tuần</b> theo format WEEKLY REPORT: NO, Client, Campaign, Status, Margin Before, Margin After, Kết quả, Lỗi sai.</li>
+                    <li><i class="fas fa-check text-green-400 mr-2"></i><b>Sao lưu / Khôi phục (JSON)</b> gồm PNL, báo cáo, blacklist và Kho KOC. Muốn dùng chung cả team: kết nối <a href="#sync" class="underline">Google Sheets</a>.</li>
                 </ul>
             </div>
 
         </div>
+
+        <!-- Sync Section -->
+        <div id="sync" class="mt-12 bg-green-900/20 border border-green-500/30 rounded-2xl p-8 shadow-2xl">
+            <div class="flex items-center gap-3 mb-4">
+                <span class="bg-green-600 text-white p-2 rounded-lg"><i class="fas fa-cloud"></i> Team</span>
+                <h2 class="text-3xl font-bold text-green-300">Đồng bộ qua Google Sheets</h2>
+            </div>
+            <p class="text-gray-300 mb-4">Mặc định dữ liệu chỉ nằm trong trình duyệt của từng người (tải lại trang vẫn còn, nhưng xóa dữ liệu
+                trình duyệt hoặc đổi máy là mất, và team không thấy của nhau). Kết nối một Google Sheet của công ty để cả team dùng chung
+                <b>Kho KOC, Blacklist, Kho PNL, Báo cáo tuần</b>. Làm 1 lần, khoảng 5 phút.</p>
+            <ol class="list-decimal pl-5 space-y-2 text-gray-300 text-sm">
+                <li>Tạo Google Sheet mới (Drive công ty) › <b>Tiện ích mở rộng › Apps Script</b>.</li>
+                <li>Xóa code mẫu, dán mã bên dưới (<button onclick="copyAppsScript()" class="underline text-green-300">📋 Copy mã Apps Script</button>
+                    <span id="copy-gs-status" class="text-xs text-gray-500"></span>) › <b>Lưu</b>.</li>
+                <li>Chọn hàm <code>setup</code> › <b>Chạy</b> › cấp quyền (nếu thấy "chưa xác minh": Nâng cao › Đi tới…). Mở <b>Nhật ký thực thi</b>, copy <b>mã bí mật (token)</b>.</li>
+                <li><b>Triển khai › Tùy chọn triển khai mới › Ứng dụng web</b>: Thực thi với tư cách <b>Tôi</b>, Quyền truy cập <b>Bất kỳ ai</b> › copy URL <code>…/exec</code>.</li>
+                <li>Trong tool: <b>⚙️ Cài đặt › Đồng bộ Google Sheets</b>: dán URL + mã bí mật + tên bạn › <b>Kiểm tra kết nối</b> › <b>Lưu</b>. Gửi URL + mã cho team qua kênh nội bộ.</li>
+            </ol>
+            <ul class="mt-4 space-y-1 text-gray-400 text-sm">
+                <li>• Sửa ô trực tiếp trên Sheet hoặc thêm dòng mới (chỉ cần cột Tên) đều được đồng bộ về tool.</li>
+                <li>• Hai người sửa cùng một dòng: bản sửa mới nhất thắng. Xóa: xóa trong tool, hoặc đặt cột <code>deleted</code> = TRUE.</li>
+                <li>• Dữ liệu được bảo vệ bằng mã bí mật; đổi mã trong Apps Script › Cài đặt dự án › Thuộc tính tập lệnh (<code>SYNC_TOKEN</code>).</li>
+                <li>• Không đồng bộ: brief đang làm, shortlist, API key (riêng từng máy). Dữ liệu mẫu không được đẩy lên Sheet.</li>
+            </ul>
+        </div>
+        <script>
+            async function copyAppsScript() {
+                const out = document.getElementById('copy-gs-status');
+                try {
+                    const res = await fetch('apps-script/Code.gs');
+                    if (!res.ok) throw new Error();
+                    await navigator.clipboard.writeText(await res.text());
+                    out.textContent = '✅ Đã copy';
+                } catch (e) {
+                    out.innerHTML = 'Không copy tự động được: mở <a class="underline" target="_blank" href="https://github.com/dinhmanhcvp/miracle-workspace/blob/main/apps-script/Code.gs">Code.gs trên GitHub</a> và copy.';
+                }
+            }
+        </script>
 
         <!-- Magic Bookmarklet Section -->
         <div
@@ -267,8 +296,8 @@
                 </div>
 
                 <p class="text-gray-300 text-lg mb-6 max-w-3xl">
-                    Đẩy dữ liệu từ TikTok/Facebook thẳng vào Tool mà không cần Copy/Paste thủ công. Hãy coi nó như
-                    Extension trình duyệt riêng của bạn!
+                    Đang xem profile TikTok của một KOC, bấm 1 lần: tool tự đọc tên, bio, follower, lượt xem, caption và hashtag
+                    các video trên trang, phân tích bằng AI (nếu có key), chấm điểm theo brief rồi lưu vào Kho KOC.
                 </p>
 
                 <div class="bg-dark-900/50 rounded-xl p-5 border border-purple-900/50">
@@ -278,16 +307,17 @@
                         <li>Ấn <kbd
                                 class="bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs border border-gray-700">Ctrl
                                 + Shift + B</kbd> để hiện Thanh Dấu Trang (Bookmarks).</li>
-                        <li>Kéo nút tím <b>"🪄 Miracle Grab"</b> thả lên thanh Dấu Trang. Xong! (Hoặc copy mã trong khung và dán vào ô URL của một bookmark mới.)</li>
+                        <li>Kéo nút tím <b>"🪄 Phân tích KOC"</b> thả lên thanh Dấu Trang. Xong! (Hoặc copy mã trong khung và dán vào ô URL của một bookmark mới.)</li>
                     </ol>
 
                     <h3 class="text-white font-semibold mb-3">🪄 Cách sử dụng:</h3>
                     <ul class="text-gray-400 space-y-2">
-                        <li>1. Khi đang lướt TikTok/FB duyệt KOC, bấm vào Bookmark vừa tạo.</li>
-                        <li>2. Tool tự lấy Tên và Follower (TikTok, YouTube). Nếu không tìm thấy sẽ hỏi bạn nhập. Đường dẫn Tool đã
-                            được điền sẵn, chỉ cần Enter.</li>
-                        <li>3. BÙM! Trình duyệt sẽ tự nhảy qua Tool, điền sẵn thông số và Focus ngay về tab Proceed Internal cho bạn,
-                            đồng thời tự check Blacklist. 🚀</li>
+                        <li>1. Mở <b>profile TikTok</b> của KOC (cuộn xuống một chút để lưới video tải ra), bấm bookmark.</li>
+                        <li>2. Tool mở tab mới: xem follower, view trung vị (bỏ video ghim), ER ước tính, % video có dấu hiệu quảng cáo, ngành, hashtag, điểm theo brief và nhận xét AI (phong cách, an toàn thương hiệu, từng quảng cáo brand nào).</li>
+                        <li>3. Bấm <b>Lưu vào Kho KOC</b>, <b>Lưu & thêm shortlist</b> hoặc <b>Lưu & đưa vào PNL</b>.</li>
+                        <li>4. Muốn soi kỹ hơn: mở 1–2 <b>video</b> tiêu biểu của KOC và bấm bookmark: tool lấy thêm <b>phụ đề</b> (lời nói) và ER thật của video, gộp vào cùng KOC.</li>
+                        <li>⚠️ Nếu tool báo "bấm F5": do bạn chuyển trang trong TikTok mà trang chưa tải lại. Bấm F5 trên trang video rồi bấm bookmark lại.</li>
+                        <li>ℹ️ Tool chỉ đọc những gì đang hiển thị trên trang bạn mở, không tự quét TikTok. Giá nhập, contact cần bổ sung tay trong Kho KOC.</li>
                     </ul>
                 </div>
             </div>

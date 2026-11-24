@@ -87,6 +87,9 @@
             <!-- Tabs injected by JS -->
         </nav>
         <div class="p-4 border-t border-gray-800 space-y-3">
+            <button id="sync-status" onclick="Sync.syncNow(true)" class="w-full text-left text-xs text-gray-500 hover:text-gray-300 flex items-center gap-2" title="Bấm để đồng bộ ngay">
+                <i class="fas fa-cloud"></i><span id="sync-status-text">Dữ liệu chỉ lưu trên trình duyệt này</span>
+            </button>
             <button onclick="openModal('bookmarklet')"
                 class="w-full btn-secondary !bg-purple-900/30 hover:!bg-purple-900/50 text-purple-400 font-bold border border-purple-800">
                 <i class="fas fa-magic"></i> Magic Bookmarklet
@@ -171,7 +174,7 @@
                                 nhau bởi dấu phẩy)</label><input type="text" id="brief-keywords"
                                 class="input-dark brief-field" placeholder="VD: review chân thật, da dầu, unbox"></div>
                     </div>
-                    <div><span class="label-dark">Ngành</span>
+                    <div><span class="label-dark">Nhóm KOC / Ngành</span>
                         <div id="brief-categories" class="flex flex-wrap gap-2"></div>
                     </div>
                     <div><span class="label-dark">Nền tảng (bỏ trống = tất cả)</span>
@@ -190,6 +193,22 @@
                         cài đặt ở tab Proceed External (chưa gồm phí backup).</p>
                     <button onclick="runMatch()" id="btn-match" class="btn-primary w-full py-4 text-base"><i
                             class="fas fa-magnifying-glass"></i> GỢI Ý KOC PHÙ HỢP</button>
+                </div>
+
+                <div class="card">
+                    <div class="flex flex-wrap gap-3 justify-between items-center mb-2">
+                        <h3 class="text-lg font-semibold text-white"><i
+                                class="fab fa-tiktok text-pink-400 mr-2"></i>Tìm thêm KOC trên TikTok</h3>
+                        <div class="flex gap-2">
+                            <button onclick="suggestSearchTerms(false)" class="btn-secondary text-xs">⚡ Tạo từ khóa</button>
+                            <button onclick="suggestSearchTerms(true)" id="btn-search-ai" class="btn-primary text-xs">✨ AI gợi ý</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3">Mở các link tìm kiếm bên dưới, vào profile KOC trông phù hợp rồi bấm
+                        bookmark <b class="text-purple-400">🪄 Phân tích KOC</b>: tool tự đọc follower, view, caption, phụ đề,
+                        chấm điểm theo brief này và lưu vào Kho KOC.
+                        <button onclick="openModal('bookmarklet')" class="underline hover:text-gray-300">Cài bookmark</button></p>
+                    <div id="search-suggestions"></div>
                 </div>
 
                 <div id="match-results" class="card hidden">
@@ -253,12 +272,8 @@
                     <div class="flex flex-wrap gap-2 mb-4">
                         <button onclick="openKocModal()" class="btn-primary text-sm"><i class="fas fa-plus"></i> Thêm
                             KOC</button>
-                        <button onclick="openModal('paste')" class="btn-secondary text-sm"><i
-                                class="fas fa-paste"></i> Dán từ Excel/Sheets</button>
-                        <button onclick="document.getElementById('koc-csv-file').click()" class="btn-secondary text-sm"><i
-                                class="fas fa-file-import"></i> Import CSV</button>
-                        <input type="file" id="koc-csv-file" accept=".csv,.tsv,.txt,text/csv" class="hidden"
-                            onchange="importKocCsvFile(event)">
+                        <button onclick="openImportModal('koc')" class="btn-secondary text-sm"><i
+                                class="fas fa-file-import"></i> Nhập từ Excel / Sheets / CSV</button>
                         <button onclick="exportKocCsv()" class="btn-secondary text-sm"><i
                                 class="fas fa-file-export"></i> Export CSV</button>
                         <button onclick="downloadKocTemplate()" class="btn-secondary text-sm"><i
@@ -285,7 +300,7 @@
                                     <th>Follower</th>
                                     <th>View TB</th>
                                     <th>ER</th>
-                                    <th>Ngành</th>
+                                    <th>Nhóm / Ngành</th>
                                     <th>Khán giả</th>
                                     <th>Giá nhập</th>
                                     <th></th>
@@ -295,6 +310,29 @@
                         </table>
                     </div>
                     <p id="koc-table-footer" class="text-xs text-gray-500 mt-3"></p>
+                </div>
+
+                <div class="card" id="blacklist-card">
+                    <div class="flex flex-wrap gap-3 justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-white"><i class="fas fa-ban text-red-500 mr-2"></i>Blacklist
+                            (<span id="blacklist-count">0</span>)</h3>
+                        <div class="flex gap-2">
+                            <button onclick="openImportModal('blacklist')" class="btn-secondary text-xs"><i class="fas fa-file-import"></i> Nhập từ Excel/Sheets</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-3">
+                        <input type="text" id="bl-new-name" class="input-dark text-sm" placeholder="Tên KOL">
+                        <input type="text" id="bl-new-link" class="input-dark text-sm" placeholder="Link kênh">
+                        <input type="text" id="bl-new-reason" class="input-dark text-sm" placeholder="Dự án / lý do">
+                        <button onclick="addBlacklistEntry()" class="btn-primary text-sm"><i class="fas fa-plus"></i> Thêm</button>
+                    </div>
+                    <div class="overflow-x-auto rounded-lg border border-gray-800 max-h-96 overflow-y-auto">
+                        <table class="data-table">
+                            <thead><tr><th>Tên</th><th>Link</th><th>Dự án</th><th>Lý do</th><th></th></tr></thead>
+                            <tbody id="blacklist-tbody"></tbody>
+                        </table>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Khớp theo tên hoặc theo link kênh (kể cả khi KOL đổi tên). KOC trong blacklist bị loại khỏi gợi ý.</p>
                 </div>
             </div>
 
@@ -321,8 +359,8 @@
                     <div id="blacklist-safe" class="mt-3 hidden p-3 bg-green-900/20 border border-green-700/40 rounded-lg text-green-400 text-sm">
                         <i class="fas fa-check-circle mr-2"></i> Không thấy trong blacklist.
                     </div>
-                    <p class="text-xs text-gray-500 mt-3">Quản lý danh sách blacklist trong <button
-                            class="underline hover:text-gray-300" onclick="openModal('settings')">Cài đặt</button>.</p>
+                    <p class="text-xs text-gray-500 mt-3">Kiểm tra theo tên hoặc dán link kênh. Quản lý danh sách ở <button
+                            class="underline hover:text-gray-300" onclick="switchTab('kocs')">Kho KOC › Blacklist</button>.</p>
                 </div>
 
                 <div class="card">
@@ -415,116 +453,169 @@
 
             <!-- TAB: internal -->
             <div id="tab-internal" class="tab-content space-y-6">
-                <div class="mb-8">
+                <div class="mb-6">
                     <h2 class="text-3xl font-bold text-white mb-2">Proceed Internal</h2>
-                    <p class="text-gray-400">Tính giá nhập, thuế, phí backup và xuất dòng PRE PNL.</p>
+                    <p class="text-gray-400">Thông tin KOL và chi phí nội bộ (Internal cost) theo template PRE PNL.</p>
                 </div>
 
                 <div class="card grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div class="sm:col-span-2">
                         <h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Thông tin KOL</h3>
                     </div>
-                    <div><label class="label-dark" for="pnl-name">Tên KOL *</label><input type="text" id="pnl-name"
+                    <div><label class="label-dark" for="pnl-name">Tên *</label><input type="text" id="pnl-name"
                             class="input-dark"></div>
+                    <div><label class="label-dark" for="pnl-contact">Contact (SĐT ưu tiên / Email / FB)</label><input
+                            type="text" id="pnl-contact" class="input-dark"></div>
                     <div><label class="label-dark" for="pnl-link">Link kênh</label><input type="text" id="pnl-link"
                             class="input-dark" oninput="detectPlatformFromLink()"></div>
-                    <div><label class="label-dark" for="pnl-contact">Contact (SĐT / Zalo)</label><input type="text"
-                            id="pnl-contact" class="input-dark"></div>
                     <div><label class="label-dark" for="pnl-followers">Followers</label><input type="text"
                             id="pnl-followers" class="input-dark" placeholder="VD: 120k, 1.2M"></div>
-                    <div><label class="label-dark" for="pnl-platform">Nền tảng</label>
+                    <div><label class="label-dark" for="pnl-platform">Nền tảng (để tính Cost Backup)</label>
                         <select id="pnl-platform" class="input-dark" onchange="refreshCalculations()">
                             <option value="TikTok">TikTok</option>
-                            <option value="FB">FB</option>
-                            <option value="YT">YT</option>
+                            <option value="FB">Facebook</option>
+                            <option value="YT">YouTube</option>
                             <option value="Threads">Threads</option>
+                            <option value="Instagram">Instagram</option>
                         </select>
                     </div>
-                    <div class="sm:col-span-2"><label class="label-dark" for="pnl-scope">Chi tiết hạng mục
-                            (Scope)</label><textarea id="pnl-scope" class="input-dark h-24"
-                            oninput="refreshCalculations()"></textarea></div>
+                    <div><label class="label-dark" for="pnl-payment">Payment term</label><input type="text"
+                            id="pnl-payment" class="input-dark" placeholder="VD: 100% sau, 50-50"></div>
+                    <div class="sm:col-span-2"><label class="label-dark" for="pnl-scope">Hạng mục công việc</label><textarea
+                            id="pnl-scope" class="input-dark h-24" oninput="refreshCalculations()"
+                            placeholder="VD: Sản xuất và đăng tải 01 video review sản phẩm trên TikTok (60s), gắn link, Code Ads 7 ngày"></textarea>
+                    </div>
 
                     <div class="sm:col-span-2 mt-2">
-                        <h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Tài chính & KPI</h3>
+                        <h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Internal cost</h3>
                     </div>
-                    <div><label class="label-dark" for="pnl-cost">Lương KOL (giá nhập, chưa thuế) *</label><input
-                            type="text" inputmode="decimal" id="pnl-cost" class="input-dark money-input"
-                            placeholder="VD: 10tr hoặc 10.000.000" oninput="refreshCalculations()"></div>
-                    <div><label class="label-dark" for="pnl-kpi">KPI (View / Tương tác)</label><input type="text"
-                            inputmode="decimal" id="pnl-kpi" class="input-dark money-input" placeholder="VD: 200k"
-                            oninput="refreshCalculations()"></div>
-                    <div><label class="label-dark" for="pnl-tax-type">Loại thuế</label>
+                    <div><label class="label-dark" for="pnl-cost">Đơn giá booking (X) *</label><input type="text"
+                            inputmode="decimal" id="pnl-cost" class="input-dark money-input"
+                            placeholder="VD: 5tr hoặc 5.000.000" oninput="refreshCalculations()"></div>
+                    <div><label class="label-dark" for="pnl-qty-booking">Số lượng booking (O)</label><input type="number"
+                            min="0" id="pnl-qty-booking" class="input-dark" value="1" oninput="refreshCalculations()"></div>
+                    <div><label class="label-dark" for="pnl-tax-type">Loại thuế (Y)</label>
                         <select id="pnl-tax-type" class="input-dark" onchange="refreshCalculations()">
-                            <option value="PIT">PIT (Lương / 9)</option>
-                            <option value="VAT">VAT (0)</option>
-                            <option value="HKD">HKD (Lương × 7%)</option>
+                            <option value="PIT">PIT (F = E / 9)</option>
+                            <option value="VAT">VAT (F = 0)</option>
+                            <option value="HKD">HKD (F = E × 7%)</option>
                         </select>
                     </div>
-                    <div><label class="label-dark" for="pnl-tax-calc">Thuế</label><input type="text"
+                    <div><label class="label-dark" for="pnl-total-cost">Total cost (E = X × O)</label><input type="text"
+                            id="pnl-total-cost" class="input-dark" readonly></div>
+                    <div><label class="label-dark" for="pnl-tax-calc">Thuế booking (F)</label><input type="text"
                             id="pnl-tax-calc" class="input-dark" readonly></div>
-                    <div><label class="label-dark" for="pnl-backup">Phí backup (KPI × hệ số nền tảng)</label><input
-                            type="text" id="pnl-backup" class="input-dark" readonly></div>
-                    <div><label class="label-dark" for="pnl-full-cost">Tổng giá vốn (Lương + Thuế + Backup)</label><input
-                            type="text" id="pnl-full-cost" class="input-dark font-semibold text-brand-400" readonly></div>
+                    <div></div>
+                    <div><label class="label-dark" for="pnl-kpi">KPI View commit</label><input type="text"
+                            inputmode="decimal" id="pnl-kpi" class="input-dark money-input" placeholder="VD: 20k"
+                            oninput="refreshCalculations()"></div>
+                    <div><label class="label-dark" for="pnl-kpi-eng">KPI Engagement commit</label><input type="text"
+                            inputmode="decimal" id="pnl-kpi-eng" class="input-dark money-input" placeholder="VD: 500"
+                            oninput="refreshCalculations()"></div>
+                    <div class="sm:col-span-2"><label class="label-dark" for="pnl-backup">Cost backup (M)</label><input
+                            type="text" id="pnl-backup" class="input-dark" readonly>
+                        <p id="pnl-backup-rule" class="text-xs text-gray-500 mt-1"></p></div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <button onclick="exportPnl()" class="btn-primary w-full py-4 text-base"><i
-                            class="fas fa-clipboard-list"></i> COPY DÒNG PNL</button>
+                    <button onclick="switchTab('external')" class="btn-primary w-full py-4 text-base"><i
+                            class="fas fa-arrow-right"></i> SANG PROCEED EXTERNAL</button>
                     <button onclick="savePnlToDb()" class="btn-success w-full py-4 text-base"><i
                             class="fas fa-save"></i> LƯU VÀO KHO PNL</button>
                 </div>
-                <button onclick="saveKocFromInternal()" class="btn-secondary w-full text-sm"><i
-                        class="fas fa-address-book"></i> Lưu KOC này vào Kho KOC (để gợi ý cho brief sau)</button>
-                <p class="text-xs text-gray-500">Giá bán ra (External) lấy theo cài đặt ở tab Proceed External. Kiểm tra tab đó trước
-                    khi lưu nếu cần đổi % margin.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button onclick="exportPnl()" class="btn-secondary w-full text-sm"><i
+                            class="fas fa-clipboard-list"></i> Copy dòng PRE PNL (25 cột)</button>
+                    <button onclick="saveKocFromInternal()" class="btn-secondary w-full text-sm"><i
+                            class="fas fa-address-book"></i> Lưu KOC này vào Kho KOC</button>
+                </div>
             </div>
 
             <!-- TAB: external -->
             <div id="tab-external" class="tab-content space-y-6">
-                <div class="mb-8">
+                <div class="mb-6">
                     <h2 class="text-3xl font-bold text-white mb-2">Proceed External</h2>
-                    <p class="text-gray-400">Đặt % lợi nhuận và xuất dòng báo giá cho khách (không lộ giá gốc).</p>
+                    <p class="text-gray-400">Tạo giá bán (External cost) theo margin mục tiêu và xuất dòng báo giá cho khách.</p>
                 </div>
 
-                <div class="card grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div id="ext-kol-summary" class="text-sm text-gray-400"></div>
+
+                <div class="card grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    <div class="sm:col-span-3">
+                        <h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Cách tạo giá bán</h3>
+                    </div>
                     <div>
-                        <label class="label-dark" for="ext-mode">Cách tính giá bán</label>
+                        <label class="label-dark" for="ext-mode">Cách tính</label>
                         <select id="ext-mode" class="input-dark" onchange="refreshCalculations()">
-                            <option value="margin">Margin mục tiêu (% trên giá bán)</option>
-                            <option value="markup">Markup (% cộng thêm trên giá vốn)</option>
+                            <option value="margin">Theo margin mục tiêu (L)</option>
+                            <option value="markup">Markup % trên tổng chi phí</option>
+                            <option value="manual">Tự nhập giá bán (A)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="label-dark" for="ext-percent">Tỷ lệ (%)</label>
-                        <input type="text" inputmode="decimal" id="ext-percent" class="input-dark" value="20"
+                        <label class="label-dark" for="ext-percent" id="ext-percent-label">Margin mục tiêu (%)</label>
+                        <input type="text" inputmode="decimal" id="ext-percent" class="input-dark" value="35"
                             oninput="refreshCalculations()">
                     </div>
                     <div>
-                        <label class="label-dark" for="ext-int-cost">Tổng giá vốn (từ Proceed Internal)</label>
-                        <input type="text" id="ext-int-cost" class="input-dark" readonly>
+                        <label class="label-dark" for="ext-round">Làm tròn giá bán (A) lên</label>
+                        <select id="ext-round" class="input-dark" onchange="refreshCalculations()">
+                            <option value="0">Không làm tròn</option>
+                            <option value="10000">10.000</option>
+                            <option value="100000">100.000</option>
+                            <option value="500000">500.000</option>
+                        </select>
                     </div>
                     <div>
-                        <label class="label-dark" for="ext-ext-cost">Giá bán ra (External)</label>
-                        <input type="text" id="ext-ext-cost" class="input-dark font-bold text-brand-500" readonly>
+                        <label class="label-dark" for="ext-discount">Giảm giá cho khách (%)</label>
+                        <input type="text" inputmode="decimal" id="ext-discount" class="input-dark" value="5"
+                            oninput="refreshCalculations()">
                     </div>
                     <div>
-                        <label class="label-dark" for="ext-margin">Lợi nhuận gộp</label>
-                        <input type="text" id="ext-margin" class="input-dark font-bold text-green-500" readonly>
+                        <label class="label-dark" for="ext-cb">Phí giới thiệu / CB (%)</label>
+                        <input type="text" inputmode="decimal" id="ext-cb" class="input-dark" value="5"
+                            oninput="refreshCalculations()">
+                    </div>
+                    <div class="text-xs text-gray-500 flex items-end pb-2">Giảm giá và CB theo % leader yêu cầu cho từng dự án.</div>
+
+                    <div class="sm:col-span-3 mt-2">
+                        <h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">External cost</h3>
                     </div>
                     <div>
-                        <label class="label-dark" for="ext-margin-pct">% Margin thực tế</label>
-                        <input type="text" id="ext-margin-pct" class="input-dark font-bold text-green-500" readonly>
+                        <label class="label-dark" for="ext-price">Chi phí (A) – đơn giá bán</label>
+                        <input type="text" inputmode="decimal" id="ext-price" class="input-dark money-input font-bold text-brand-500"
+                            oninput="refreshCalculations()" readonly>
                     </div>
-                    <div id="ext-warning" class="sm:col-span-2 hidden p-3 rounded-lg bg-yellow-900/30 border border-yellow-700/50 text-yellow-400 text-sm"></div>
+                    <div>
+                        <label class="label-dark" for="ext-qty">Số lượng (B)</label>
+                        <input type="number" min="0" id="ext-qty" class="input-dark" value="1" oninput="refreshCalculations()">
+                    </div>
+                    <div>
+                        <label class="label-dark" for="ext-unit">Đơn vị tính</label>
+                        <select id="ext-unit" class="input-dark">
+                            <option>Video</option><option>Bài</option><option>Gói</option><option>Tháng</option><option>Livestream</option><option>Story</option>
+                        </select>
+                    </div>
+                    <div><label class="label-dark" for="ext-c">Giảm giá (C)</label><input type="text" id="ext-c" class="input-dark" readonly></div>
+                    <div><label class="label-dark" for="ext-ext-cost">Thành tiền (D)</label><input type="text" id="ext-ext-cost" class="input-dark font-bold text-brand-500" readonly></div>
+                    <div><label class="label-dark" for="ext-int-cost">Chi phí nội bộ (E + F + M)</label><input type="text" id="ext-int-cost" class="input-dark" readonly></div>
+                    <div><label class="label-dark" for="ext-g">CB (G)</label><input type="text" id="ext-g" class="input-dark" readonly></div>
+                    <div><label class="label-dark" for="ext-h">Thuế CB (H)</label><input type="text" id="ext-h" class="input-dark" readonly></div>
+                    <div></div>
+                    <div><label class="label-dark" for="ext-margin">Lợi nhuận gộp (K)</label><input type="text" id="ext-margin" class="input-dark font-bold text-green-500" readonly></div>
+                    <div><label class="label-dark" for="ext-margin-pct">Margin (L)</label><input type="text" id="ext-margin-pct" class="input-dark font-bold text-green-500" readonly></div>
+                    <div><label class="label-dark" for="ext-cpv">CPV / CPE</label><input type="text" id="ext-cpv" class="input-dark" readonly></div>
+                    <div id="ext-warning" class="sm:col-span-3 hidden p-3 rounded-lg bg-yellow-900/30 border border-yellow-700/50 text-yellow-400 text-sm"></div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <button onclick="exportExternal()" class="btn-primary w-full py-4 text-base"><i
-                            class="fas fa-file-invoice-dollar"></i> COPY DÒNG BÁO GIÁ</button>
+                            class="fas fa-file-invoice-dollar"></i> COPY DÒNG BÁO GIÁ (EXT)</button>
                     <button onclick="savePnlToDb()" class="btn-success w-full py-4 text-base"><i
                             class="fas fa-save"></i> LƯU VÀO KHO PNL</button>
                 </div>
+                <button onclick="exportPnl()" class="btn-secondary w-full text-sm"><i class="fas fa-clipboard-list"></i>
+                    Copy dòng PRE PNL (25 cột)</button>
             </div>
 
             <!-- TAB: confirm -->
@@ -598,7 +689,7 @@ Ngày on-air: []</textarea>
             <div id="tab-report" class="tab-content space-y-6">
                 <div class="mb-8">
                     <h2 class="text-3xl font-bold text-white mb-2">Weekly Report</h2>
-                    <p class="text-gray-400">Tạo dòng báo cáo tuần chuẩn để dán vào Excel.</p>
+                    <p class="text-gray-400">Tạo dòng báo cáo tuần theo format WEEKLY REPORT (NO, Client, Campaign, Status, Margin Before/After, Kết quả, Lỗi sai).</p>
                 </div>
 
                 <div class="card grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -609,11 +700,16 @@ Ngày on-air: []</textarea>
                     <div class="sm:col-span-2"><label class="label-dark" for="rep-status">Status</label>
                         <select id="rep-status" class="input-dark">
                             <option value="Đã chốt">Đã chốt</option>
+                            <option value="Gửi báo giá">Gửi báo giá</option>
+                            <option value="Cân nhắc báo giá">Cân nhắc báo giá</option>
                             <option value="Đang đàm phán">Đang đàm phán</option>
-                            <option value="Cân nhắc">Cân nhắc</option>
                             <option value="Hủy">Hủy</option>
                         </select>
                     </div>
+                    <div><label class="label-dark" for="rep-margin-before">Margin Before (%)</label><input type="text"
+                            inputmode="decimal" id="rep-margin-before" class="input-dark" placeholder="VD: 35"></div>
+                    <div><label class="label-dark" for="rep-margin-after">Margin After (%)</label><input type="text"
+                            inputmode="decimal" id="rep-margin-after" class="input-dark" placeholder="VD: 32"></div>
                     <div class="sm:col-span-2"><label class="label-dark" for="rep-result">Kết quả</label><textarea
                             id="rep-result" class="input-dark h-20"></textarea></div>
                     <div class="sm:col-span-2"><label class="label-dark" for="rep-error">Lỗi sai</label><textarea
@@ -653,9 +749,15 @@ Ngày on-air: []</textarea>
                             <button onclick="clearDb('pnl')"
                                 class="px-3 py-1.5 rounded-lg bg-red-900/30 text-red-500 hover:bg-red-900/50 transition-colors text-sm border border-red-900"><i
                                     class="fas fa-trash"></i> Xóa hết</button>
-                            <button onclick="copyBulkPnl()"
+                            <button onclick="copyBulkPnl('prepnl')"
                                 class="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 transition-colors text-sm text-white"><i
-                                    class="fas fa-copy"></i> Copy toàn bộ PNL (Excel)</button>
+                                    class="fas fa-copy"></i> PRE PNL</button>
+                            <button onclick="copyBulkPnl('nblist')"
+                                class="px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm text-white"><i
+                                    class="fas fa-copy"></i> NB LIST</button>
+                            <button onclick="copyBulkPnl('quotation')"
+                                class="px-3 py-1.5 rounded-lg bg-dark-700 hover:bg-dark-600 transition-colors text-sm text-white"
+                                title="Không có giá nội bộ"><i class="fas fa-copy"></i> Báo giá EXT</button>
                         </div>
                     </div>
 
@@ -665,11 +767,12 @@ Ngày on-air: []</textarea>
                             <div class="text-3xl font-bold text-white" id="stat-total-koc">0</div>
                         </div>
                         <div class="bg-dark-900/50 border border-gray-800 rounded-lg p-4 flex flex-col items-center">
-                            <div class="text-gray-400 text-sm font-medium mb-1">Tổng doanh thu (External)</div>
+                            <div class="text-gray-400 text-sm font-medium mb-1">Tổng chi phí (Σ D)</div>
                             <div class="text-2xl font-bold text-blue-400 mt-1" id="stat-total-revenue">0 ₫</div>
+                            <div class="text-xs text-gray-500 mt-1" id="stat-total-vat"></div>
                         </div>
                         <div class="bg-dark-900/50 border border-gray-800 rounded-lg p-4 flex flex-col items-center">
-                            <div class="text-gray-400 text-sm font-medium mb-1">Tổng lợi nhuận gộp</div>
+                            <div class="text-gray-400 text-sm font-medium mb-1">Total gross profit (Σ K)</div>
                             <div class="text-2xl font-bold text-emerald-400 mt-1" id="stat-total-margin">0 ₫</div>
                             <div class="text-xs text-gray-500 mt-1" id="stat-avg-margin"></div>
                         </div>
@@ -691,8 +794,8 @@ Ngày on-air: []</textarea>
                             <tbody id="pnl-tbody"></tbody>
                         </table>
                         <div class="px-4 py-3 bg-dark-900/50 border-t border-gray-800 text-xs text-brand-400 italic">
-                            <i class="fas fa-lightbulb mr-1"></i> Bảng hiển thị rút gọn. Khi bấm Copy, hệ thống xuất
-                            đủ 22 cột theo format PRE PNL của công ty.
+                            <i class="fas fa-lightbulb mr-1"></i> Bảng hiển thị rút gọn. Copy <b>PRE PNL</b> xuất đủ 25 cột theo
+                            template (STT → CPE), <b>NB LIST</b> theo format workfile, <b>Báo giá EXT</b> chỉ gồm giá bán + KPI để gửi khách.
                         </div>
                     </div>
                 </div>
@@ -760,8 +863,24 @@ Ngày on-air: []</textarea>
             </datalist>
             <p class="text-xs text-gray-500 mb-4">Nếu Google ngừng hỗ trợ model, chỉ cần đổi tên model ở đây.</p>
 
-            <label class="label-dark" for="custom-blacklist">Blacklist của agency (mỗi dòng 1 tên)</label>
-            <textarea id="custom-blacklist" class="input-dark h-28 mb-4 text-sm"></textarea>
+            <div class="border-t border-gray-700 pt-4 mt-2 mb-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-semibold text-white"><i class="fas fa-cloud text-green-400 mr-2"></i>Đồng bộ Google Sheets (dùng chung cả team)</span>
+                    <a href="miracle-guide.html#sync" target="_blank" class="text-xs underline text-gray-400 hover:text-gray-200">Hướng dẫn cài đặt</a>
+                </div>
+                <label class="label-dark" for="sync-url">Web App URL (Apps Script)</label>
+                <input type="url" id="sync-url" class="input-dark mb-2 text-xs font-mono" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+                <label class="label-dark" for="sync-token">Mã bí mật (token)</label>
+                <input type="password" id="sync-token" class="input-dark mb-2" autocomplete="off">
+                <label class="label-dark" for="sync-user">Tên của bạn (ghi vào cột "Người sửa")</label>
+                <input type="text" id="sync-user" class="input-dark mb-2" placeholder="VD: Hân">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <button type="button" onclick="Sync.testConnection()" class="btn-secondary text-xs"><i class="fas fa-plug"></i> Kiểm tra kết nối</button>
+                    <button type="button" onclick="Sync.disconnect()" class="btn-secondary text-xs"><i class="fas fa-unlink"></i> Ngắt kết nối</button>
+                    <span id="sync-test-result" class="text-xs text-gray-400"></span>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Đồng bộ Kho KOC, Blacklist, Kho PNL và Báo cáo. Brief, shortlist và API key vẫn chỉ lưu trên máy này. Blacklist quản lý ở tab Kho KOC.</p>
+            </div>
 
             <div class="flex flex-wrap justify-between gap-3">
                 <button onclick="runAutomatedTests()" class="btn-secondary text-xs" title="Chạy kiểm thử tự động (không ảnh hưởng dữ liệu)"><i
@@ -792,19 +911,24 @@ Ngày on-air: []</textarea>
             </div>
 
             <div class="space-y-4 text-gray-300 text-sm">
-                <p>Khi đang xem kênh TikTok / YouTube / Facebook của KOC, bấm bookmark này để gửi Tên, Link và Follower
-                    thẳng sang Workspace (tab Proceed Internal). Từ đó có thể lưu luôn vào Kho KOC.</p>
+                <p>Đang xem <b>profile TikTok</b> của một KOC, bấm bookmark này: tool đọc tên, bio, follower, lượt xem và
+                    caption các video đang hiện trên trang, phân tích (AI nếu có key) và chấm điểm theo brief, rồi cho bạn lưu
+                    vào Kho KOC.</p>
+                <p class="text-gray-400">Đang xem <b>một video</b>: tool lấy thêm phụ đề (lời nói) của video đó nếu có và
+                    gộp vào đánh giá của KOC. Chỉ cần làm với 1–2 video tiêu biểu của KOC đã lọt shortlist. Cũng dùng được trên
+                    kênh YouTube.</p>
                 <div class="bg-dark-900 border border-gray-700 p-4 rounded-lg">
                     <p class="font-bold text-white mb-2">Cách cài đặt (mất 5 giây):</p>
                     <ol class="list-decimal pl-5 space-y-2 text-gray-400">
                         <li>Bật thanh Dấu trang (Bookmarks Bar): <kbd class="bg-gray-800 px-1.5 rounded">Ctrl+Shift+B</kbd>.</li>
                         <li>Kéo nút tím bên dưới thả lên thanh Dấu trang.</li>
-                        <li>Lần đầu bấm, dán đường dẫn của Tool (đã điền sẵn bên dưới). Các lần sau chỉ cần Enter.</li>
+                        <li>Nếu đổi địa chỉ Tool (VD: chuyển sang GitHub Pages), cài lại bookmark từ địa chỉ mới.</li>
+                        <li>Mẹo: cuộn trang profile xuống một chút để lưới video tải ra nhiều hơn trước khi bấm.</li>
                     </ol>
                 </div>
                 <div class="flex justify-center">
                     <a id="bookmarklet-link" href="#" onclick="event.preventDefault();showToast('Hãy KÉO nút này lên thanh Dấu trang, đừng bấm.', 'info')"
-                        class="btn-primary !bg-purple-600 cursor-move"><i class="fas fa-magic"></i> 🪄 Miracle Grab</a>
+                        class="btn-primary !bg-purple-600 cursor-move"><i class="fas fa-magic"></i> 🪄 Phân tích KOC</a>
                 </div>
                 <div>
                     <label class="label-dark">Đường dẫn Tool hiện tại</label>
@@ -849,7 +973,7 @@ Ngày on-air: []</textarea>
                 <div><label class="label-dark" for="koc-location">Khu vực</label><input type="text" id="koc-location" class="input-dark" list="koc-location-list"><datalist id="koc-location-list"></datalist></div>
                 <div><label class="label-dark" for="koc-rating">Đánh giá nội bộ</label>
                     <select id="koc-rating" class="input-dark"><option value="0">Chưa đánh giá</option><option value="5">★★★★★ Rất tốt</option><option value="4">★★★★ Tốt</option><option value="3">★★★ Ổn</option><option value="2">★★ Kém</option><option value="1">★ Rất kém</option></select></div>
-                <div class="sm:col-span-2"><span class="label-dark">Ngành</span><div id="koc-categories" class="flex flex-wrap gap-2"></div></div>
+                <div class="sm:col-span-2"><span class="label-dark">Nhóm KOC / Ngành</span><div id="koc-categories" class="flex flex-wrap gap-2"></div></div>
                 <div class="sm:col-span-2"><span class="label-dark">Độ tuổi khán giả</span><div id="koc-ages" class="flex flex-wrap gap-2"></div></div>
                 <div class="sm:col-span-2"><label class="label-dark" for="koc-notes">Ghi chú / phong cách nội dung</label><textarea id="koc-notes" class="input-dark h-20 text-sm" placeholder="VD: review chân thật, hay làm unbox, giọng miền Nam"></textarea></div>
                 <div><label class="label-dark" for="koc-status">Trạng thái</label>
@@ -862,20 +986,46 @@ Ngày on-air: []</textarea>
         </div>
     </div>
 
-    <!-- Paste Import Modal -->
+    <!-- Import Modal (paste, CSV or .xlsx with column mapping) -->
     <div id="paste-modal" onclick="if(event.target===this)closeModal('paste')"
         class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-300 p-4">
-        <div class="bg-dark-800 border border-gray-700 rounded-xl max-w-3xl w-full p-6 shadow-2xl scale-95 transition-transform duration-300 transform max-h-full overflow-y-auto"
+        <div class="bg-dark-800 border border-gray-700 rounded-xl max-w-4xl w-full p-6 shadow-2xl scale-95 transition-transform duration-300 transform max-h-full overflow-y-auto"
             id="paste-panel">
-            <h2 class="text-xl font-semibold mb-2 text-white"><i class="fas fa-paste text-brand-500 mr-2"></i>Dán danh sách KOC từ Excel / Google Sheets</h2>
-            <p class="text-sm text-gray-400 mb-3">Bôi đen cả bảng <b>kèm dòng tiêu đề</b> rồi dán vào đây. Tool tự nhận các cột:
-                <span class="text-gray-300">Tên, Nền tảng, Link, Contact, Followers, View TB, ER (%), Ngành, Giới tính khán giả, Độ tuổi khán giả, Khu vực, Giá nhập, Loại thuế, Đánh giá, Ghi chú</span>.
-                Chỉ cột Tên là bắt buộc. KOC trùng (cùng link, hoặc cùng tên + nền tảng) sẽ được cập nhật.</p>
-            <textarea id="paste-text" class="input-dark h-56 font-mono text-xs" placeholder="Tên&#9;Nền tảng&#9;Followers&#9;Ngành&#9;Giá nhập&#10;Linh Review&#9;TikTok&#9;120k&#9;Mỹ phẩm&#9;8tr"></textarea>
+            <h2 class="text-xl font-semibold mb-2 text-white"><i class="fas fa-file-import text-brand-500 mr-2"></i>Nhập dữ liệu</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                <div><label class="label-dark" for="import-target">Nhập vào</label>
+                    <select id="import-target" class="input-dark" onchange="analyzeImport()">
+                        <option value="koc">Kho KOC</option>
+                        <option value="blacklist">Blacklist</option>
+                    </select></div>
+                <div class="sm:col-span-2"><label class="label-dark" for="import-file-xlsx">Chọn file (.xlsx, .xls, .csv) hoặc dán bên dưới</label>
+                    <input type="file" id="import-file-xlsx" accept=".xlsx,.xls,.xlsm,.csv,.tsv,.txt" class="input-dark text-xs" onchange="loadImportFile(event)"></div>
+            </div>
+            <div id="import-sheet-wrap" class="hidden mb-3"><label class="label-dark" for="import-sheet">Sheet</label>
+                <select id="import-sheet" class="input-dark" onchange="selectImportSheet()"></select></div>
+            <textarea id="paste-text" class="input-dark h-32 font-mono text-xs" placeholder="Hoặc bôi đen bảng trong Excel / Google Sheets (kèm dòng tiêu đề) rồi dán vào đây"></textarea>
+            <p class="text-xs text-gray-500 mt-1">Nhận được file NB LIST, PRE PNL, Quotation, Blacklist của agency: tự bỏ qua dòng tiêu đề lớn, tiêu đề 2 tầng và dòng tổng; dòng "A. GIA ĐÌNH", "A. BOOKING ON TIKTOK"... được dùng làm nhóm / nền tảng. "Chi phí" là giá bán, "Cost Booking / Đơn giá booking" là giá nhập.</p>
+            <div id="import-mapping" class="mt-4"></div>
             <p id="paste-preview" class="text-xs text-gray-400 mt-2"></p>
             <div class="flex justify-end gap-3 mt-4">
                 <button onclick="closeModal('paste')" class="btn-secondary">Hủy</button>
-                <button onclick="importKocPaste()" class="btn-primary">Nhập vào Kho KOC</button>
+                <button onclick="importKocPaste()" id="btn-import-confirm" class="btn-primary">Nhập dữ liệu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grab Analysis Modal -->
+    <div id="grab-modal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-300 p-4">
+        <div class="bg-dark-800 border border-gray-700 rounded-xl max-w-3xl w-full p-6 shadow-2xl scale-95 transition-transform duration-300 transform max-h-full overflow-y-auto"
+            id="grab-panel">
+            <h2 class="text-lg font-semibold mb-4 text-white"><i class="fas fa-magnifying-glass-chart text-purple-400 mr-2"></i>Phân tích KOC</h2>
+            <div id="grab-body" class="space-y-4"></div>
+            <div class="flex flex-wrap justify-end gap-2 mt-6">
+                <button onclick="currentGrab=null;closeModal('grab')" class="btn-secondary">Bỏ qua</button>
+                <button onclick="saveGrabbedKoc({ toPnl: true })" class="btn-secondary">Lưu & đưa vào PNL</button>
+                <button onclick="saveGrabbedKoc({ addToShortlist: true })" class="btn-secondary">Lưu & thêm shortlist</button>
+                <button onclick="saveGrabbedKoc()" id="btn-grab-save" class="btn-primary">Lưu vào Kho KOC</button>
             </div>
         </div>
     </div>
@@ -883,6 +1033,8 @@ Ngày on-air: []</textarea>
     <script src="assets/matcher.js"></script>
     <script src="assets/app.js"></script>
     <script src="assets/koc.js"></script>
+    <script src="assets/grab.js"></script>
+    <script src="assets/sync.js"></script>
 </body>
 
 </html>

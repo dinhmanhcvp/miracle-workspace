@@ -23,6 +23,10 @@ const STORAGE = {
     agency: 'miracle_agency_name',
     blacklistMigrated: 'miracle_blacklist_migrated',
     kocs: 'miracle_kocs',
+    blacklistV2: 'miracle_blacklist_v2',
+    pricing: 'miracle_pricing_v2',
+    sync: 'miracle_sync_config',
+    syncState: 'miracle_sync_state',
     brief: 'miracle_brief',
     shortlist: 'miracle_shortlist',
 };
@@ -32,8 +36,6 @@ const DEFAULT_MODEL = 'gemini-2.5-flash';
 // so existing users keep it, while new agencies start with an empty list.
 const LEGACY_BLACKLIST = ["Hoàng Bảo Long", "muoibiennn ✿", "Chây Xì Dách", "Lang Thang Cần Thơ", "Sang Blu", "A ri é", "Thaomoon đi đâu đấy", "người đẹp té giếng", "Kenz Nguyễn", "Mr Xuân Hoàn", "Trang Rita", "Elmich"];
 
-// Backup cost coefficient per KPI unit, by platform
-const BACKUP_RATE = { TikTok: 3.5, FB: 35, YT: 35, Threads: 700 };
 
 const INDUSTRY_HINTS = {
     'Momo/App': 'Ưu tiên KOL có tệp khán giả dễ cài app: kiểm tra chỉ số lượt cài, tỷ lệ giữ chân và khả năng truyền tải CTA rõ ràng.',
@@ -107,9 +109,10 @@ let savedPNL = safeStorage.getJSON(STORAGE.pnl, []);
 let savedReports = safeStorage.getJSON(STORAGE.reports, []);
 if (!Array.isArray(savedPNL)) savedPNL = [];
 if (!Array.isArray(savedReports)) savedReports = [];
+const withId = (prefix) => (r) => (r && !r.id ? { ...r, id: prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7) } : r);
 
-const persistPnl = () => safeStorage.set(STORAGE.pnl, JSON.stringify(savedPNL));
-const persistReports = () => safeStorage.set(STORAGE.reports, JSON.stringify(savedReports));
+const persistPnl = ({ track = true } = {}) => { safeStorage.set(STORAGE.pnl, JSON.stringify(savedPNL)); if (track && window.Sync) Sync.changed('pnl'); };
+const persistReports = ({ track = true } = {}) => { safeStorage.set(STORAGE.reports, JSON.stringify(savedReports)); if (track && window.Sync) Sync.changed('reports'); };
 
 // ================= UI: TOAST / NAV / MODALS =================
 let showToast = (msg, type = 'success') => {
@@ -183,8 +186,8 @@ const openModal = (name) => {
     if (name === 'settings') {
         $('gemini-api-key').value = safeStorage.get(STORAGE.apiKey, '');
         $('gemini-model').value = safeStorage.get(STORAGE.model, DEFAULT_MODEL);
-        $('custom-blacklist').value = getCustomBlacklist().join('\n');
         $('agency-name').value = safeStorage.get(STORAGE.agency, '');
+        if (window.Sync) Sync.fillSettings();
     }
     if (name === 'bookmarklet') setupBookmarklet();
     const m = $(`${name}-modal`);
@@ -208,9 +211,8 @@ const saveSettings = () => {
     const model = $('gemini-model').value.trim() || DEFAULT_MODEL;
     if (key) safeStorage.set(STORAGE.apiKey, key); else safeStorage.remove(STORAGE.apiKey);
     safeStorage.set(STORAGE.model, model);
-    const list = $('custom-blacklist').value.split('\n').map(s => s.trim()).filter(Boolean);
-    safeStorage.set(STORAGE.blacklist, JSON.stringify(list));
     safeStorage.set(STORAGE.agency, $('agency-name').value.trim());
+    if (window.Sync) Sync.saveSettings();
     renderSidebar();
     switchTab(currentTabId);
     checkBlacklist();
@@ -221,10 +223,8 @@ const saveSettings = () => {
 // ================= BOOKMARKLET =================
 const getToolUrl = () => location.href.split('#')[0].split('?')[0];
 
-const buildBookmarkletCode = (toolUrl) => {
-    const src = `(function(){var n='',f='',h=location.hostname,q=function(s){var e=document.querySelector(s);return e?e.innerText.trim():''};if(h.indexOf('tiktok.com')>-1){n=q('[data-e2e="user-title"]')||q('[data-e2e="user-subtitle"]');f=q('[data-e2e="followers-count"]');}else if(h.indexOf('youtube.com')>-1){n=q('#channel-name #text')||q('yt-dynamic-text-view-model h1')||q('h1');f=(q('#subscriber-count')||q('yt-content-metadata-view-model')).replace(/subscribers?|người đăng ký/gi,'').split('•').filter(function(x){return /\\d/.test(x)&&/(subscriber|đăng ký|[kmb])/i.test(x)})[0]||q('#subscriber-count');}else{n=q('h1')||q('h2');}if(!n)n=prompt('Không tìm thấy tên. Nhập tên KOC:')||'';if(!f)f=prompt('Không tìm thấy Follower. Nhập số Follower (VD 120k):')||'';var d=localStorage.getItem('miracle_tool_url')||${JSON.stringify(toolUrl)},u=prompt('Đường dẫn Tool (Enter để dùng mặc định):',d);if(u){try{localStorage.setItem('miracle_tool_url',u)}catch(e){}window.open(u+(u.indexOf('?')>-1?'&':'?')+'name='+encodeURIComponent(n)+'&link='+encodeURIComponent(location.href)+'&followers='+encodeURIComponent(f),'_blank');}})();`;
-    return 'javascript:' + src;
-};
+// The bookmarklet source lives in assets/grab.js (grabKocPage)
+const buildBookmarkletCode = (toolUrl) => buildGrabBookmarklet(toolUrl);
 
 const setupBookmarklet = () => {
     const url = getToolUrl();
@@ -290,22 +290,45 @@ const migrateLegacyData = () => {
     safeStorage.set(STORAGE.blacklistMigrated, '1');
 };
 const getAgencyName = () => (safeStorage.get(STORAGE.agency, '') || '').trim() || 'agency bên mình';
-const getBlacklist = () => getCustomBlacklist().map(normalizeName).filter(Boolean);
-
-/** Returns the matched blacklist entry, or null. */
-const findBlacklisted = (name) => {
-    const val = normalizeName(name);
-    if (!val) return null;
-    return getBlacklist().find(b => val === b || val.includes(b) || (val.length >= 4 && b.includes(val))) || null;
+// Blacklist entries: { id, name, link, project, reason, updatedAt }
+let blacklistCache = null;
+const getBlacklistEntries = () => {
+    if (blacklistCache) return blacklistCache;
+    let list = safeStorage.getJSON(STORAGE.blacklistV2, null);
+    if (!Array.isArray(list)) {
+        // migrate the old name-only list
+        list = getCustomBlacklist().map(name => KocMatcher.normalizeBlacklistEntry({ name }));
+        safeStorage.set(STORAGE.blacklistV2, JSON.stringify(list));
+    }
+    blacklistCache = list;
+    return list;
 };
+const setBlacklistEntries = (list, { track = true } = {}) => {
+    blacklistCache = list;
+    safeStorage.set(STORAGE.blacklistV2, JSON.stringify(list));
+    if (track && window.Sync) Sync.changed('blacklist');
+};
+
+/** Returns the matching blacklist entry (by name or by channel link), or null. */
+const findBlacklistEntry = (name, link) => {
+    const val = normalizeName(name);
+    const handle = KocMatcher.handleFromLink(link);
+    return getBlacklistEntries().find(e => {
+        if (handle && e.link && KocMatcher.handleFromLink(e.link) === handle) return true;
+        const b = normalizeName(e.name);
+        if (!val || !b) return false;
+        return val === b || val.includes(b) || (val.length >= 4 && b.includes(val));
+    }) || null;
+};
+const findBlacklisted = (name, link) => { const e = findBlacklistEntry(name, link); return e ? (e.name || e.link) : null; };
 
 const checkBlacklist = () => {
     const val = $('blacklist-input').value;
-    const match = findBlacklisted(val);
-    $('blacklist-warning').classList.toggle('hidden', !match);
-    $('blacklist-safe').classList.toggle('hidden', !!match || !val.trim());
-    $('blacklist-match').textContent = match || '';
-    return !!match;
+    const entry = findBlacklistEntry(val, /^https?:/.test(val.trim()) ? val.trim() : '');
+    $('blacklist-warning').classList.toggle('hidden', !entry);
+    $('blacklist-safe').classList.toggle('hidden', !!entry || !val.trim());
+    $('blacklist-match').textContent = entry ? [entry.name || entry.link, entry.project, entry.reason].filter(Boolean).join(' – ') : '';
+    return !!entry;
 };
 
 const updateIndustryHint = () => {
@@ -405,117 +428,163 @@ MUST START WITH: 'Dear team, My name is ${so}, Booking Specialist at ${agency}. 
     renderMarkdown($('res-xingia'), text);
 };
 
-// ================= STEP 2 + 3: PRICING =================
+// ================= PROCEED INTERNAL + EXTERNAL (PRE PNL template) =================
+// Column letters follow the agency template: A B C D (external) · X O E F G H M (internal) · K L (result)
+const fmtPct = (L) => (Number(L || 0) * 100).toFixed(2) + '%';
+const fmtFollowers = (v) => { const n = parseNumber(v); return isNaN(n) ? String(v || '') : formatMoney(n); };
+
+const getPricingSettings = () => ({
+    mode: $('ext-mode').value,
+    pct: num($('ext-percent').value),
+    discountPct: num($('ext-discount').value),
+    cbPct: num($('ext-cb').value),
+    roundTo: Number($('ext-round').value) || 0,
+});
+
 const computeDeal = () => {
-    const cost = Math.max(0, num($('pnl-cost').value));
-    const kpi = Math.max(0, num($('pnl-kpi').value));
-    const plat = $('pnl-platform').value;
-    const taxT = $('pnl-tax-type').value;
-
-    const backup = Math.round(kpi * (BACKUP_RATE[plat] || 0));
-    const tax = KocMatcher.calcTax(cost, taxT);
-
-    const fullCost = cost + tax + backup;
-    const mode = $('ext-mode').value;
-    const pct = num($('ext-percent').value);
-    let extCost = 0;
+    const s = getPricingSettings();
+    const qty = (id) => $(id).value === '' ? 1 : Math.max(0, num($(id).value));
+    const base = {
+        X: Math.max(0, num($('pnl-cost').value)), O: qty('pnl-qty-booking'), B: qty('ext-qty'),
+        taxType: $('pnl-tax-type').value, platform: $('pnl-platform').value,
+        kpiView: Math.max(0, num($('pnl-kpi').value)), kpiEng: Math.max(0, num($('pnl-kpi-eng').value)),
+        discountPct: s.discountPct, cbPct: s.cbPct,
+    };
     let warning = '';
-    if (mode === 'margin' && pct >= 100) warning = 'Margin phải nhỏ hơn 100%.';
-    else extCost = KocMatcher.priceFromCost(fullCost, mode, pct);
-    const grossProfit = extCost - fullCost;
-    const marginPercent = extCost > 0 ? ((grossProfit / extCost) * 100).toFixed(2) + '%' : '0%';
-    if (!warning && extCost > 0 && grossProfit <= 0) warning = 'Giá bán đang không có lãi.';
-
-    return { cost, intCost: cost, kpi, plat, taxT, tax, backup, fullCost, mode, pct, extCost, grossProfit, marginPercent, warning };
+    let A = 0;
+    if (s.mode === 'manual') A = Math.max(0, num($('ext-price').value));
+    else if (s.mode === 'margin' && s.pct + s.cbPct * 10 / 9 >= 100) warning = 'Margin mục tiêu + phí CB không thể ≥ 100%.';
+    else A = KocMatcher.solvePrice({ ...base, mode: s.mode, pct: s.pct, roundTo: s.roundTo });
+    const p = KocMatcher.calcPnl({ ...base, A });
+    if (!warning && p.D > 0 && p.K <= 0) warning = 'Giá bán đang lỗ (lợi nhuận gộp ≤ 0).';
+    if (!warning && s.mode === 'manual' && p.D > 0 && s.pct && p.L * 100 < s.pct) warning = `Margin ${fmtPct(p.L)} thấp hơn mức tối thiểu ${s.pct}%.`;
+    if (!warning && base.X && !base.kpiView && !base.kpiEng) warning = 'Chưa nhập KPI commit: Cost backup (M) đang bằng 0.';
+    return { ...p, ...s, taxType: base.taxType, platform: base.platform, warning };
 };
 
-// Kept for backward compatibility with old callers/tests
+// Kept for backward compatibility with old callers
 const calculatePnl = () => refreshCalculations();
-const calculateExt = () => refreshCalculations().extCost;
+const calculateExt = () => refreshCalculations().D;
+
+const BACKUP_RULE_TEXT = (plat) => {
+    const r = KocMatcher.BACKUP_RATES[plat] || {};
+    const parts = [];
+    if (r.view) parts.push(`KPI View × ${String(r.view).replace('.', ',')}`);
+    if (r.eng) parts.push(`KPI Engagement × ${r.eng}`);
+    return parts.length ? `${plat}: M = ${parts.join(' + ')} (sheet COMMIT KPI)` : '';
+};
 
 const refreshCalculations = () => {
     const d = computeDeal();
-    $('pnl-tax-calc').value = formatMoney(d.tax);
-    $('pnl-backup').value = formatMoney(d.backup);
-    $('pnl-full-cost').value = formatMoney(d.fullCost);
-    $('ext-int-cost').value = d.cost ? `${formatMoney(d.fullCost)}  (Lương ${formatMoney(d.cost)} + Thuế ${formatMoney(d.tax)} + Backup ${formatMoney(d.backup)})` : 'Chưa nhập Lương KOL ở Bước 2';
-    $('ext-ext-cost').value = formatMoney(d.extCost);
-    $('ext-margin').value = formatMoney(d.grossProfit);
-    $('ext-margin-pct').value = d.marginPercent;
+    $('pnl-total-cost').value = formatMoney(d.E);
+    $('pnl-tax-calc').value = formatMoney(d.F);
+    $('pnl-backup').value = formatMoney(d.M);
+    $('pnl-backup-rule').textContent = BACKUP_RULE_TEXT(d.platform);
+    const priceEl = $('ext-price');
+    priceEl.readOnly = d.mode !== 'manual';
+    if (d.mode !== 'manual' && document.activeElement !== priceEl) priceEl.value = d.A ? formatMoney(d.A) : '';
+    $('ext-percent-label').textContent = d.mode === 'margin' ? 'Margin mục tiêu (%)' : d.mode === 'markup' ? 'Markup trên tổng chi phí (%)' : 'Margin tối thiểu để cảnh báo (%)';
+    $('ext-c').value = formatMoney(d.C);
+    $('ext-ext-cost').value = formatMoney(d.D);
+    $('ext-int-cost').value = formatMoney(d.E + d.F + d.M);
+    $('ext-g').value = formatMoney(d.G);
+    $('ext-h').value = formatMoney(d.H);
+    $('ext-margin').value = formatMoney(d.K);
+    $('ext-margin-pct').value = d.D ? fmtPct(d.L) : '';
+    $('ext-cpv').value = `${d.CPV ? formatMoney(d.CPV) : '—'} / ${d.CPE ? formatMoney(d.CPE) : '—'}`;
+    const name = $('pnl-name').value.trim();
+    $('ext-kol-summary').innerHTML = name || d.X
+        ? `KOL: <b class="text-white">${escapeHtml(name || '(chưa có tên)')}</b> · Đơn giá booking ${formatMoney(d.X)} × ${d.O} · ${escapeHtml(d.taxType)} · <button class="underline" onclick="switchTab('internal')">sửa</button>`
+        : 'Chưa có dữ liệu ở tab Proceed Internal.';
     $('ext-warning').textContent = d.warning;
     $('ext-warning').classList.toggle('hidden', !d.warning);
-    safeStorage.set(STORAGE.extMode, d.mode);
-    safeStorage.set(STORAGE.extPercent, $('ext-percent').value);
+    safeStorage.set(STORAGE.pricing, JSON.stringify({ mode: d.mode, pct: $('ext-percent').value, discountPct: $('ext-discount').value, cbPct: $('ext-cb').value, roundTo: $('ext-round').value }));
     return d;
 };
 
-const buildPnlCells = (p, stt) => [
-    stt,
-    p.name,
-    p.plat || '',
-    p.link || '',
-    p.followers || '',
-    p.contact || '',
-    p.fullScope || p.scope || '',
-    formatMoney(p.extCost || 0),
-    formatMoney(p.extCost || 0),
-    1,
-    'Video/ Bài',
-    0,
-    formatMoney(p.extCost || 0),
-    formatMoney(p.intCost || p.cost || 0),
-    1,
-    formatMoney(p.intCost || p.cost || 0),
-    formatMoney(p.tax || 0),
-    formatMoney(p.backup || 0),
-    formatMoney(p.grossProfit || 0),
-    p.marginPercent || '0%',
-    p.taxT || '',
-    formatMoney(p.kpi || 0),
-];
+const loadPricingSettings = () => {
+    const p = safeStorage.getJSON(STORAGE.pricing, null) || {};
+    const D = KocMatcher.PRICING_DEFAULTS;
+    $('ext-mode').value = ['margin', 'markup', 'manual'].includes(p.mode) ? p.mode : D.mode;
+    $('ext-percent').value = p.pct ?? D.pct;
+    $('ext-discount').value = p.discountPct ?? D.discountPct;
+    $('ext-cb').value = p.cbPct ?? D.cbPct;
+    $('ext-round').value = String(p.roundTo ?? D.roundTo);
+    if (!$('ext-round').value) $('ext-round').value = String(D.roundTo);
+};
+
+/** Old saved rows (before the template-accurate formulas) -> current shape. */
+const upgradePnlRecord = (p) => {
+    if (!p || typeof p !== 'object') return p;
+    const r = { ...p };
+    if (!r.id) r.id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    if (r.D === undefined) {
+        const ext = Number(r.extCost) || 0, cost = Number(r.intCost || r.cost) || 0;
+        Object.assign(r, {
+            A: ext, B: 1, C: 0, D: ext, X: cost, O: 1, E: cost, F: Number(r.tax) || 0, G: 0, H: 0, M: Number(r.backup) || 0,
+            K: Number(r.grossProfit) || 0, taxType: r.taxT || 'PIT', platform: r.plat || '', scope: r.fullScope || r.scope || '',
+            kpiView: Number(r.kpi) || 0, kpiEng: 0, discountPct: 0, cbPct: 0, unit: 'Video',
+        });
+        r.L = r.D ? r.K / r.D : 0;
+        r.CPV = r.kpiView ? r.D / r.kpiView : 0;
+        r.CPE = 0;
+    }
+    return r;
+};
+
+const PNL_FORMATS = {
+    // Sheet "PRE PNL" (25 columns)
+    prepnl: (p, stt) => [stt, p.name, p.contact, p.link, fmtFollowers(p.followers), p.scope, formatMoney(p.A), p.B, p.unit || 'Video', formatMoney(p.C), formatMoney(p.D),
+        formatMoney(p.X), p.O, formatMoney(p.E), formatMoney(p.F), formatMoney(p.G), formatMoney(p.H), formatMoney(p.M), formatMoney(p.K), fmtPct(p.L), p.taxType,
+        p.kpiView ? formatMoney(p.kpiView) : '', p.CPV ? formatMoney(p.CPV) : '', p.kpiEng ? formatMoney(p.kpiEng) : '', p.CPE ? formatMoney(p.CPE) : ''],
+    // Sheet "NB LIST" of the internal workfile (22 columns)
+    nblist: (p, stt) => [stt, p.name, p.link, fmtFollowers(p.followers), p.contact, '', p.scope, formatMoney(p.A), p.B, p.unit || 'Video', formatMoney(p.D),
+        formatMoney(p.X), p.O, formatMoney(p.E), formatMoney(p.F), formatMoney(p.G), formatMoney(p.H), formatMoney(p.K), fmtPct(p.L), p.taxType, p.paymentTerm || '', p.note || ''],
+    // Booking quotation sent to the client: no internal numbers (14 columns)
+    quotation: (p, stt) => [stt, p.name, fmtFollowers(p.followers), p.scope, formatMoney(p.A), p.unit || 'Video', p.B, formatMoney(p.C), formatMoney(p.D),
+        p.kpiView ? formatMoney(p.kpiView) : '', p.CPV ? formatMoney(p.CPV) : '', p.kpiEng ? formatMoney(p.kpiEng) : '', p.CPE ? formatMoney(p.CPE) : '', p.note || ''],
+};
+const buildPnlCells = (p, stt, format = 'prepnl') => PNL_FORMATS[format](upgradePnlRecord(p), stt);
 
 const getPnlRowData = () => {
     const d = computeDeal();
     const scopeText = $('pnl-scope').value.trim();
     const focChecks = getSelectedFocs();
-    const fullScope = scopeText + (focChecks.length ? (scopeText ? ' + ' : '') + 'FOC: ' + focChecks.join(', ') : '');
+    const scope = scopeText + (focChecks.length ? (scopeText ? ' + ' : '') + 'FOC: ' + focChecks.join(', ') : '');
+    const keep = ['A', 'B', 'C', 'D', 'X', 'O', 'E', 'F', 'G', 'H', 'M', 'K', 'L', 'CPV', 'CPE', 'discountPct', 'cbPct', 'kpiView', 'kpiEng', 'taxType', 'platform'];
     const row = {
         name: $('pnl-name').value.trim(),
-        plat: d.plat,
+        contact: $('pnl-contact').value.trim(),
         link: $('pnl-link').value.trim(),
         followers: $('pnl-followers').value.trim(),
-        contact: $('pnl-contact').value.trim(),
-        fullScope,
-        extCost: d.extCost,
-        intCost: d.intCost,
-        tax: d.tax,
-        taxT: d.taxT,
-        backup: d.backup,
-        kpi: d.kpi,
-        grossProfit: d.grossProfit,
-        marginPercent: d.marginPercent,
+        scope,
+        unit: $('ext-unit').value,
+        paymentTerm: $('pnl-payment').value.trim(),
+        note: '',
         savedAt: new Date().toISOString(),
     };
-    row.rawString = toTsvRow(buildPnlCells(row, 1));
+    keep.forEach(k => { row[k] = d[k]; });
+    row.rawString = toTsvRow(buildPnlCells(row, 1, 'prepnl'));
     return row;
 };
 
 const exportPnl = () => {
     const data = getPnlRowData();
-    if (!data.intCost) return showToast('Chưa nhập Lương KOL', 'error');
+    if (!data.X) return showToast('Chưa nhập Đơn giá booking (X)', 'error');
     copyTextToClipboard(data.rawString);
 };
 
 const savePnlToDb = () => {
     const data = getPnlRowData();
-    if (!data.name || !data.intCost) return showToast('Cần nhập Tên KOL và Lương KOL', 'error');
-    if (findBlacklisted(data.name) && !confirm(`"${data.name}" nằm trong blacklist. Vẫn lưu?`)) return;
+    if (!data.name || !data.X) return showToast('Cần nhập Tên và Đơn giá booking (X)', 'error');
+    if (!data.D) return showToast('Chưa có giá bán (A). Kiểm tra tab Proceed External.', 'error');
+    if (findBlacklisted(data.name, data.link) && !confirm(`"${data.name}" nằm trong blacklist. Vẫn lưu?`)) return;
     const dup = savedPNL.findIndex(p => normalizeName(p.name) === normalizeName(data.name) && (p.link || '') === data.link);
     if (dup > -1) {
         if (!confirm(`"${data.name}" đã có trong kho. Ghi đè bản cũ?`)) return;
-        savedPNL[dup] = data;
+        savedPNL[dup] = { ...data, id: savedPNL[dup].id };
     } else {
-        savedPNL.push(data);
+        savedPNL.push(upgradePnlRecord(data));
     }
     persistPnl();
     renderDbTables();
@@ -523,11 +592,9 @@ const savePnlToDb = () => {
 };
 
 const exportExternal = () => {
-    const d = computeDeal();
-    if (!d.extCost) return showToast('Chưa có giá bán. Nhập Lương KOL ở Bước 2.', 'error');
-    // Name | Scope | Unit price | Unit | Qty | Discount | Total
-    const rowStr = toTsvRow([$('pnl-name').value, $('pnl-scope').value, formatMoney(d.extCost), 'Video/ Bài', 1, 0, formatMoney(d.extCost)]);
-    copyTextToClipboard(rowStr);
+    const data = getPnlRowData();
+    if (!data.D) return showToast('Chưa có giá bán. Nhập Đơn giá booking ở Proceed Internal.', 'error');
+    copyTextToClipboard(toTsvRow(buildPnlCells(data, 1, 'quotation')));
 };
 
 // ================= STEP 4 =================
@@ -577,18 +644,23 @@ const copyInput = (id) => copyTextToClipboard($(id).value);
 
 // ================= STEP 5 =================
 const getReportData = () => {
+    const pct = (id) => { const v = $(id).value.trim(); return v ? (isNaN(parseNumber(v)) ? v : parseNumber(v) + '%') : ''; };
     const r = {
+        id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
         client: cleanCell($('rep-client').value),
         camp: cleanCell($('rep-campaign').value),
         status: cleanCell($('rep-status').value),
+        marginBefore: pct('rep-margin-before'),
+        marginAfter: pct('rep-margin-after'),
         result: cleanCell($('rep-result').value),
         error: cleanCell($('rep-error').value),
     };
-    // Client | Campaign | Status | (blank) | (blank) | Kết quả | Lỗi sai
-    r.rawString = [r.client, r.camp, r.status, '', '', r.result, r.error].join('\t');
+    r.rawString = reportCells(r, 1).join('\t');
     r.savedAt = new Date().toISOString();
     return r;
 };
+// Sheet "FORMART WEEKLY REPORT": NO | Client | Tên campaign | Status | Margin Before | Margin After | Kết quả | Lỗi sai | Note | Leader Feedback
+const reportCells = (r, no) => [no, r.client, r.camp, r.status, r.marginBefore || '', r.marginAfter || '', r.result, r.error].map(cleanCell);
 const exportReport = () => copyTextToClipboard(getReportData().rawString);
 const saveReportToDb = () => {
     const r = getReportData();
@@ -608,25 +680,27 @@ const STATUS_STYLE = {
 
 const renderDbTables = () => {
     const pBody = $('pnl-tbody');
-    if (!savedPNL.length) {
+    const rows = savedPNL.map(upgradePnlRecord);
+    if (!rows.length) {
         pBody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-500 italic py-4">Chưa có dữ liệu PNL.</td></tr>';
     } else {
-        pBody.innerHTML = savedPNL.map((p, i) => `<tr>
+        pBody.innerHTML = rows.map((p, i) => `<tr>
             <td class="text-gray-500">${i + 1}</td>
-            <td>${escapeHtml(p.name)}${findBlacklisted(p.name) ? ' <i class="fas fa-exclamation-triangle text-red-500" title="Blacklist"></i>' : ''}</td>
-            <td>${escapeHtml(p.plat || '-')}</td>
-            <td class="text-brand-400 whitespace-nowrap">${formatMoney(p.intCost || p.cost || 0)}</td>
-            <td class="text-green-400 whitespace-nowrap">${formatMoney(p.extCost || 0)}</td>
-            <td class="whitespace-nowrap">${formatMoney(p.grossProfit || 0)} <span class="text-xs text-gray-500">${escapeHtml(p.marginPercent || '')}</span></td>
+            <td>${escapeHtml(p.name)}${findBlacklisted(p.name, p.link) ? ' <i class="fas fa-exclamation-triangle text-red-500" title="Blacklist"></i>' : ''}</td>
+            <td>${escapeHtml(p.platform || '-')}</td>
+            <td class="text-brand-400 whitespace-nowrap">${formatMoney(p.E)}</td>
+            <td class="text-green-400 whitespace-nowrap">${formatMoney(p.D)}</td>
+            <td class="whitespace-nowrap">${formatMoney(p.K)} <span class="text-xs ${p.L < 0.3 ? 'text-yellow-500' : 'text-gray-500'}">${fmtPct(p.L)}</span></td>
             <td class="text-right"><button onclick="deleteRow('pnl', ${i})" class="text-gray-500 hover:text-red-500" title="Xóa dòng"><i class="fas fa-times"></i></button></td>
         </tr>`).join('');
     }
-    const totalRevenue = savedPNL.reduce((s, p) => s + (Number(p.extCost) || 0), 0);
-    const totalMargin = savedPNL.reduce((s, p) => s + (Number(p.grossProfit) || 0), 0);
-    $('stat-total-koc').textContent = savedPNL.length;
-    $('stat-total-revenue').textContent = formatMoney(totalRevenue) + ' ₫';
-    $('stat-total-margin').textContent = formatMoney(totalMargin) + ' ₫';
-    $('stat-avg-margin').textContent = totalRevenue > 0 ? `Margin trung bình: ${(totalMargin / totalRevenue * 100).toFixed(2)}%` : '';
+    const totalD = rows.reduce((s, p) => s + (Number(p.D) || 0), 0);
+    const totalK = rows.reduce((s, p) => s + (Number(p.K) || 0), 0);
+    $('stat-total-koc').textContent = rows.length;
+    $('stat-total-revenue').textContent = formatMoney(totalD) + ' ₫';
+    $('stat-total-vat').textContent = totalD ? `VAT 8%: ${formatMoney(totalD * 0.08)} · Gồm VAT: ${formatMoney(totalD * 1.08)}` : '';
+    $('stat-total-margin').textContent = formatMoney(totalK) + ' ₫';
+    $('stat-avg-margin').textContent = totalD > 0 ? `Margin: ${fmtPct(totalK / totalD)}` : '';
 
     const rBody = $('reports-tbody');
     if (!savedReports.length) {
@@ -653,17 +727,17 @@ const deleteRow = (type, index) => {
     renderDbTables();
 };
 
-const copyBulkPnl = () => {
+const PNL_FORMAT_LABEL = { prepnl: 'PRE PNL (25 cột)', nblist: 'NB LIST', quotation: 'báo giá EXT' };
+const copyBulkPnl = (format = 'prepnl') => {
     if (!savedPNL.length) return showToast('Chưa có dữ liệu để copy', 'error');
-    const rows = savedPNL.map((p, i) => toTsvRow(buildPnlCells(p, i + 1)));
+    const rows = savedPNL.map((p, i) => toTsvRow(buildPnlCells(p, i + 1, format)));
     copyTextToClipboard(rows.join('\n'));
-    showToast(`Đã copy ${savedPNL.length} dòng PRE PNL (22 cột)`);
+    showToast(`Đã copy ${savedPNL.length} dòng ${PNL_FORMAT_LABEL[format]}`);
 };
 
 const copyBulkReports = () => {
     if (!savedReports.length) return showToast('Chưa có dữ liệu để copy', 'error');
-    const rows = savedReports.map(r => [r.client, r.camp, r.status, '', '', r.result, r.error].map(cleanCell).join('\t'));
-    copyTextToClipboard(rows.join('\n'));
+    copyTextToClipboard(savedReports.map((r, i) => reportCells(r, i + 1).join('\t')).join('\n'));
     showToast(`Đã copy ${savedReports.length} dòng báo cáo`);
 };
 
@@ -676,7 +750,7 @@ const clearDb = (type) => {
 };
 
 const exportBackup = () => {
-    const payload = { app: 'miracle-workspace', version: 2, exportedAt: new Date().toISOString(), pnl: savedPNL, reports: savedReports, blacklist: getCustomBlacklist() };
+    const payload = { app: 'miracle-workspace', version: 3, exportedAt: new Date().toISOString(), pnl: savedPNL, reports: savedReports, blacklist: getBlacklistEntries(), kocs: typeof kocs !== 'undefined' ? kocs.filter(k => !k.demo) : [] };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -696,12 +770,15 @@ const importBackup = (event) => {
             const data = JSON.parse(reader.result);
             if (!Array.isArray(data.pnl) || !Array.isArray(data.reports)) throw new Error('File không đúng định dạng');
             const replace = confirm(`File có ${data.pnl.length} PNL và ${data.reports.length} báo cáo.\nOK = THAY THẾ dữ liệu hiện tại\nCancel = GỘP thêm vào`);
-            savedPNL = replace ? data.pnl : savedPNL.concat(data.pnl);
-            savedReports = replace ? data.reports : savedReports.concat(data.reports);
+            savedPNL = (replace ? data.pnl : savedPNL.concat(data.pnl)).map(upgradePnlRecord);
+            savedReports = (replace ? data.reports : savedReports.concat(data.reports)).map(withId('r'));
             if (Array.isArray(data.blacklist)) {
-                const merged = Array.from(new Set(getCustomBlacklist().concat(data.blacklist)));
-                safeStorage.set(STORAGE.blacklist, JSON.stringify(merged));
+                const incoming = data.blacklist.map(b => KocMatcher.normalizeBlacklistEntry(typeof b === 'string' ? { name: b } : b));
+                const existing = getBlacklistEntries();
+                const keys = new Set(existing.map(e => normalizeName(e.name) + '|' + e.link));
+                setBlacklistEntries(existing.concat(incoming.filter(e => !keys.has(normalizeName(e.name) + '|' + e.link))));
             }
+            if (Array.isArray(data.kocs) && data.kocs.length && typeof upsertKocs === 'function') upsertKocs(data.kocs.map(k => KocMatcher.normalizeKoc(k)));
             persistPnl();
             persistReports();
             renderDbTables();
@@ -716,12 +793,10 @@ const importBackup = (event) => {
 // ================= INIT =================
 document.addEventListener('DOMContentLoaded', () => {
     migrateLegacyData();
+    savedPNL = savedPNL.map(upgradePnlRecord);
+    savedReports = savedReports.map(withId('r'));
     renderSidebar();
-
-    const savedMode = safeStorage.get(STORAGE.extMode, null);
-    const savedPct = safeStorage.get(STORAGE.extPercent, null);
-    if (savedMode === 'margin' || savedMode === 'markup') $('ext-mode').value = savedMode;
-    if (savedPct !== null && savedPct !== '') $('ext-percent').value = savedPct;
+    loadPricingSettings();
 
     document.querySelectorAll('.money-input').forEach(el => el.addEventListener('blur', (e) => { formatInputOnBlur(e); refreshCalculations(); }));
     $('pnl-followers').addEventListener('blur', (e) => {
@@ -763,6 +838,7 @@ window.runAutomatedTests = async ({ silent = false } = {}) => {
     const originalFetch = window.fetch;
     const originalConfirm = window.confirm;
     const originalToast = showToast;
+    const syncSnap = window.Sync ? Sync.pause() : null;
     let clipboardMemory = '';
     copyTextToClipboard = async (text) => { clipboardMemory = text; };
     window.confirm = () => true;
@@ -771,60 +847,71 @@ window.runAutomatedTests = async ({ silent = false } = {}) => {
     const set = (id, v) => { $(id).value = v; };
 
     try {
-        // TEST 1: Blacklist
-        safeStorage.set(STORAGE.blacklist, JSON.stringify(['Sang Blu', 'Kenz Nguyễn']));
+        // TEST 1: Blacklist (name or link)
+        setBlacklistEntries([{ name: 'Sang Blu', link: 'https://www.tiktok.com/@sangblu.demo', reason: 'Không hợp tác' }, { name: 'Kenz Nguyễn', link: '' }].map(KocMatcher.normalizeBlacklistEntry), { track: false });
         safeStorage.set(STORAGE.agency, 'The Miracle');
         set('blacklist-input', 'Sang Blu');
-        assert(checkBlacklist(), 'T1A Blacklist hit', 'Sang Blu should be warned');
+        assert(checkBlacklist() && $('blacklist-match').textContent.includes('Không hợp tác'), 'T1A Blacklist hit with reason', $('blacklist-match').textContent);
         set('blacklist-input', 'Tiến Mạnh');
         assert(!checkBlacklist(), 'T1B Blacklist miss', 'Tiến Mạnh should be safe');
         set('blacklist-input', 'a');
         assert(!checkBlacklist(), 'T1C No false positive on short input', '"a" should not match');
         set('blacklist-input', '  SANG   BLU review ');
         assert(checkBlacklist(), 'T1D Case/space insensitive', 'should match normalized name');
+        assert(!!findBlacklisted('Tên khác', 'https://www.tiktok.com/@SangBlu.demo?lang=vi'), 'T1E Match by channel link even if renamed', 'link match');
 
         // TEST 2: Number parsing
         assert(parseNumber('10.000.000') === 10000000, 'T2A parse 10.000.000', String(parseNumber('10.000.000')));
         assert(parseNumber('120k') === 120000, 'T2B parse 120k', String(parseNumber('120k')));
         assert(parseNumber('1,2M') === 1200000, 'T2C parse 1,2M', String(parseNumber('1,2M')));
         assert(parseNumber('3tr') === 3000000, 'T2D parse 3tr', String(parseNumber('3tr')));
-        assert(parseNumber('1.5K') === 1500, 'T2E parse 1.5K', String(parseNumber('1.5K')));
-        assert(isNaN(parseNumber('abc')), 'T2F parse invalid', 'should be NaN');
+        assert(isNaN(parseNumber('abc')), 'T2E parse invalid', 'should be NaN');
 
-        // TEST 3: TikTok & HKD
-        set('pnl-platform', 'TikTok'); set('pnl-tax-type', 'HKD'); set('pnl-cost', '10000000'); set('pnl-kpi', '200000');
+        // TEST 3: Internal cost (E, F, M) per template
+        set('pnl-platform', 'TikTok'); set('pnl-tax-type', 'HKD'); set('pnl-cost', '10000000'); set('pnl-qty-booking', '1'); set('pnl-kpi', '200000'); set('pnl-kpi-eng', '');
         let d = computeDeal();
-        assert(d.backup === 700000, 'T3A Backup TikTok', d.backup);
-        assert(d.tax === 700000, 'T3B Tax HKD', d.tax);
-        exportPnl();
-        assert(clipboardMemory.includes('10.000.000'), 'T3C Money format', clipboardMemory);
-        assert(clipboardMemory.split('\t').length === 22, 'T3D 22 columns', clipboardMemory.split('\t').length);
-
-        // TEST 4: FB & PIT
-        set('pnl-platform', 'FB'); set('pnl-tax-type', 'PIT'); set('pnl-cost', '9.000.000'); set('pnl-kpi', '2000');
+        assert(d.M === 700000, 'T3A Backup TikTok = view × 3,5', d.M);
+        assert(Math.round(d.F) === 700000, 'T3B Tax HKD = E × 7%', d.F);
+        set('pnl-platform', 'FB'); set('pnl-tax-type', 'PIT'); set('pnl-cost', '9.000.000'); set('pnl-kpi', '10000'); set('pnl-kpi-eng', '2000');
         d = computeDeal();
-        assert(d.backup === 70000, 'T4A Backup FB', d.backup);
-        assert(d.tax === 1000000, 'T4B Tax PIT', d.tax);
+        assert(d.M === 220000, 'T3C Backup FB = view × 15 + eng × 35', d.M);
+        assert(Math.round(d.F) === 1000000, 'T3D Tax PIT = E / 9', d.F);
+        set('pnl-qty-booking', '2');
+        assert(computeDeal().E === 18000000, 'T3E E = X × O', computeDeal().E);
+        set('pnl-qty-booking', '1');
 
-        // TEST 5: Pricing modes
-        set('pnl-tax-type', 'VAT'); set('pnl-cost', '10000000'); set('pnl-kpi', '0');
-        set('ext-mode', 'markup'); set('ext-percent', '20');
-        d = computeDeal();
-        assert(d.extCost === 12000000, 'T5A Markup 20%', d.extCost);
-        set('ext-mode', 'margin');
+        // TEST 4: External price (A, C, D, G, H, K, L)
+        set('pnl-platform', 'TikTok'); set('pnl-tax-type', 'PIT'); set('pnl-cost', '1000000'); set('pnl-kpi', '10000'); set('pnl-kpi-eng', '');
+        set('ext-mode', 'manual'); set('ext-price', '3000000'); set('ext-qty', '1'); set('ext-discount', '5'); set('ext-cb', '5'); set('ext-percent', '35');
         d = refreshCalculations();
-        assert(d.extCost === 12500000, 'T5B Margin 20%', d.extCost);
-        assert(d.marginPercent === '20.00%', 'T5C Real margin equals target', d.marginPercent);
-        assert($('ext-margin').value === '2.500.000', 'T5D Margin field', $('ext-margin').value);
-        set('pnl-tax-type', 'PIT'); set('pnl-kpi', '2000');
-        d = computeDeal();
-        assert(d.marginPercent === '20.00%' && d.grossProfit === d.extCost - d.cost - d.tax - d.backup, 'T5E Margin includes tax & backup', d.marginPercent);
-        set('ext-percent', '100');
-        assert(computeDeal().warning !== '', 'T5F Margin 100% rejected', 'should warn');
-        set('ext-percent', '20');
-        set('pnl-name', 'KOL A'); set('pnl-scope', '1 clip\n60s\tTikTok');
+        assert(d.C === 150000 && d.D === 2850000 && d.G === 142500 && Math.round(d.H) === 15833 && d.M === 35000, 'T4A Manual price: C, D, G, H, M per template', JSON.stringify([d.C, d.D, d.G, d.H, d.M]));
+        assert(Math.round(d.K) === 1545556 && fmtPct(d.L) === '54.23%', 'T4B K and L per template', `${d.K} ${d.L}`);
+        set('ext-mode', 'margin'); set('ext-round', '0');
+        d = refreshCalculations();
+        assert(Math.abs(d.L - 0.35) < 1e-6, 'T4C Margin mode hits 35% after discount, CB, tax, backup', d.L);
+        set('ext-round', '100000');
+        d = refreshCalculations();
+        assert(d.A % 100000 === 0 && d.L >= 0.35, 'T4D Rounded price keeps margin ≥ target', `${d.A} ${d.L}`);
+        assert($('ext-price').readOnly && $('ext-price').value === formatMoney(d.A), 'T4E Price field shows computed A', $('ext-price').value);
+        set('ext-mode', 'markup'); set('ext-percent', '50'); set('ext-round', '0'); set('ext-discount', '0'); set('ext-cb', '0'); set('pnl-tax-type', 'VAT'); set('pnl-kpi', '0');
+        d = refreshCalculations();
+        assert(d.D === 1500000, 'T4F Markup 50% on total cost', d.D);
+        set('ext-mode', 'margin'); set('ext-percent', '96'); set('ext-cb', '5');
+        assert(computeDeal().warning !== '', 'T4G Impossible margin rejected', 'should warn');
+
+        // TEST 5: Copy formats
+        set('ext-mode', 'manual'); set('ext-price', '3000000'); set('ext-discount', '5'); set('ext-cb', '5'); set('pnl-tax-type', 'PIT'); set('pnl-kpi', '5000'); set('pnl-kpi-eng', '2000');
+        set('pnl-name', 'KOL A'); set('pnl-contact', '0900000000'); set('pnl-link', 'https://www.tiktok.com/@kola'); set('pnl-followers', '999k'); set('pnl-scope', '1 clip\n60s\tTikTok');
+        refreshCalculations();
+        exportPnl();
+        let cells = clipboardMemory.split('\t');
+        assert(cells.length === 25 && !clipboardMemory.includes('\n'), 'T5A PRE PNL row has 25 columns, sanitized', cells.length);
+        assert(cells[1] === 'KOL A' && cells[2] === '0900000000' && cells[4] === '999.000' && cells[6] === '3.000.000' && cells[9] === '150.000' && cells[10] === '2.850.000' && cells[15] === '142.500' && cells[19] === fmtPct(computeDeal().L) && cells[20] === 'PIT',
+            'T5B PRE PNL column order matches template', JSON.stringify(cells));
+        assert(cells[21] === '5.000' && cells[22] === '570' && cells[24] === '1.425', 'T5C KPI / CPV / CPE columns', JSON.stringify(cells.slice(21)));
         exportExternal();
-        assert(clipboardMemory.split('\t').length === 7 && !clipboardMemory.includes('\n'), 'T5G External row sanitized', JSON.stringify(clipboardMemory));
+        cells = clipboardMemory.split('\t');
+        assert(cells.length === 14 && cells[4] === '3.000.000' && cells[8] === '2.850.000' && !clipboardMemory.includes('1.000.000'), 'T5D Quotation row: 14 columns, no internal cost', JSON.stringify(cells));
 
         // TEST 6: AI prompt + fallback
         document.querySelectorAll('#foc-container input').forEach(el => el.checked = false);
@@ -844,7 +931,6 @@ window.runAutomatedTests = async ({ silent = false } = {}) => {
         assert(capturedPrompt.includes('Miễn phí cung cấp mã Code Ads 7 ngày (Bắt buộc TikTok)') && capturedPrompt.includes('Miễn phí SDHA 1 tháng'), 'T6B FOCs in prompt', capturedPrompt);
         assert(!capturedUrl.includes('test_key') && capturedHeaders['x-goog-api-key'] === 'test_key', 'T6C API key sent in header, not URL', capturedUrl);
         assert($('res-xingia').textContent.includes('Mock LLM Response'), 'T6D Response rendered', $('res-xingia').textContent);
-
         showToast = () => { };
         window.fetch = async () => ({ ok: false, status: 404, json: async () => ({ error: { message: 'model not found' } }) });
         await generateXinGia();
@@ -859,28 +945,31 @@ window.runAutomatedTests = async ({ silent = false } = {}) => {
         assert(!$('res-xingia').querySelector('img[onerror]'), 'T6G AI output sanitized', $('res-xingia').innerHTML);
         showToast = originalToast;
 
-        // TEST 7: Weekly report
-        set('rep-client', 'Client X'); set('rep-campaign', 'Summer Sales'); set('rep-status', 'Đang đàm phán');
+        // TEST 7: Weekly report (sheet FORMART WEEKLY REPORT)
+        set('rep-client', 'Client X'); set('rep-campaign', 'Summer Sales'); set('rep-status', 'Đang đàm phán'); set('rep-margin-before', '35'); set('rep-margin-after', '32,5');
         set('rep-result', 'Line 1\nLine 2'); set('rep-error', 'No\terror');
         exportReport();
-        assert(clipboardMemory.startsWith('Client X\tSummer Sales\tĐang đàm phán'), 'T7A Report row', clipboardMemory);
-        assert(!clipboardMemory.includes('\n') && clipboardMemory.split('\t').length === 7, 'T7B Report sanitized', JSON.stringify(clipboardMemory));
+        assert(clipboardMemory.startsWith('1\tClient X\tSummer Sales\tĐang đàm phán\t35%\t32.5%'), 'T7A Report row', clipboardMemory);
+        assert(!clipboardMemory.includes('\n') && clipboardMemory.split('\t').length === 8, 'T7B Report sanitized', JSON.stringify(clipboardMemory));
 
         // TEST 8: Local DB (isolated from real data)
-        set('pnl-name', 'Mock KOL 1'); set('pnl-link', 'Link 1'); set('pnl-followers', '100k'); set('pnl-platform', 'FB'); set('pnl-cost', '1000000'); set('pnl-kpi', '50000'); set('pnl-scope', 'line1\nline2');
+        set('ext-mode', 'margin'); set('ext-percent', '35'); set('ext-round', '100000');
+        set('pnl-name', 'Mock KOL 1'); set('pnl-link', 'Link 1'); set('pnl-followers', '100k'); set('pnl-platform', 'FB'); set('pnl-cost', '1000000'); set('pnl-kpi', '5000'); set('pnl-scope', 'line1\nline2');
         savePnlToDb();
-        set('pnl-name', '<b onmouseover=alert(1)>Mock KOL 2</b>'); set('pnl-link', 'Link 2'); set('pnl-platform', 'TikTok'); set('pnl-cost', '5000000'); set('pnl-kpi', '150000');
+        set('pnl-name', '<b onmouseover=alert(1)>Mock KOL 2</b>'); set('pnl-link', 'Link 2'); set('pnl-platform', 'TikTok'); set('pnl-cost', '5000000'); set('pnl-kpi', '15000');
         savePnlToDb();
-        assert(savedPNL.length === 2, 'T8A Saved 2 rows', savedPNL.length);
+        assert(savedPNL.length === 2 && savedPNL.every(p => p.id && p.L >= 0.35), 'T8A Saved 2 rows with ids and target margin', JSON.stringify(savedPNL.map(p => p.L)));
         set('pnl-name', 'Mock KOL 1'); set('pnl-link', 'Link 1');
         savePnlToDb();
         assert(savedPNL.length === 2, 'T8B Duplicate overwritten, not appended', savedPNL.length);
-        copyBulkPnl();
-        const bulkRows = clipboardMemory.split('\n');
-        assert(bulkRows.length === 2 && bulkRows.every(r => r.split('\t').length === 22), 'T8C Bulk copy 2 rows × 22 cols', JSON.stringify(bulkRows));
-        assert(bulkRows[0].startsWith('1\tMock KOL 1') && bulkRows[1].startsWith('2\t'), 'T8D STT numbering', bulkRows[0]);
-        assert(!$('pnl-tbody').querySelector('b'), 'T8E Names escaped in table', $('pnl-tbody').innerHTML);
-        assert(pnlSnap !== savedPNL, 'T8F Real data untouched', 'snapshot replaced');
+        for (const [fmt, cols] of [['prepnl', 25], ['nblist', 22], ['quotation', 14]]) {
+            copyBulkPnl(fmt);
+            const rows = clipboardMemory.split('\n');
+            assert(rows.length === 2 && rows.every(r => r.split('\t').length === cols) && rows[0].startsWith('1\tMock KOL 1') && rows[1].startsWith('2\t'), `T8C Bulk ${fmt}: 2 rows × ${cols} cols`, JSON.stringify(rows));
+        }
+        assert(!$('pnl-tbody').querySelector('b'), 'T8D Names escaped in table', $('pnl-tbody').innerHTML);
+        const legacy = upgradePnlRecord({ name: 'Old', extCost: 12000000, intCost: 10000000, tax: 0, backup: 0, grossProfit: 2000000, taxT: 'VAT' });
+        assert(legacy.D === 12000000 && legacy.X === 10000000 && Math.abs(legacy.L - 1 / 6) < 1e-9 && legacy.id, 'T8E Legacy rows upgraded', JSON.stringify(legacy));
     } catch (e) {
         console.error('Test execution encountered an unexpected error:', e);
         results.push({ name: 'Unexpected error', pass: false, message: e.message });
@@ -893,6 +982,7 @@ window.runAutomatedTests = async ({ silent = false } = {}) => {
         savedPNL = pnlSnap;
         savedReports = repSnap;
         storageSnap.forEach(([k, v]) => { if (v === null) safeStorage.remove(k); else safeStorage.set(k, v); });
+        blacklistCache = null;
         fieldSnap.forEach(([el, v]) => { if (el.type === 'checkbox') el.checked = v; else el.value = v; });
         focSnap.forEach(([el, v]) => { el.checked = v; });
         $('res-xingia-container').classList.add('hidden');
@@ -900,6 +990,7 @@ window.runAutomatedTests = async ({ silent = false } = {}) => {
         checkBlacklist();
         refreshCalculations();
         renderDbTables();
+        if (window.Sync && syncSnap) Sync.resume(syncSnap);
     }
 
     const passed = results.filter(r => r.pass).length;
