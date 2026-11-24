@@ -16,7 +16,10 @@ Checklist dành cho bạn (người bán) khi bàn giao tool cho một agency kh
 
 ## 1. Triển khai bản web cho agency
 
-Tool là trang tĩnh (HTML/CSS/JS), host ở đâu cũng được. Khuyên dùng **Cloudflare Pages** hoặc **Netlify** (miễn phí, https, repo private được):
+Tool là trang tĩnh (HTML/CSS/JS), host ở đâu cũng được: **Vercel**, Cloudflare Pages, Netlify (miễn phí, https, repo private được).
+
+- **Vercel**: repo đã có `vercel.json` (build `npm run build && npm run dist`, xuất bản thư mục `dist/`): chỉ cần Import repo, không chỉnh gì thêm. Khi cấp bản quyền có khóa tên miền, dùng đúng tên miền Vercel của agency (VD `--domains abc-koc.vercel.app`).
+- Cloudflare Pages / Netlify: Build command `npm run build && npm run dist`, Output directory `dist`.
 
 - Kết nối repo (private) › Build command: *(để trống)* › Output directory: `/` (thư mục gốc).
 - Đặt tên dự án theo agency, ví dụ `abc-media-koc.pages.dev`, hoặc gắn tên miền riêng của agency.
