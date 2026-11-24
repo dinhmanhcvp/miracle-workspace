@@ -120,6 +120,112 @@ const openPage = async (browser) => {
     await ctx.close();
   }
 
+  // ---------- 3. Bookmarklet on a simulated TikTok page ----------
+  {
+    const fs = require('fs');
+    const root = path.resolve(__dirname, '..');
+    const ctx = await browser.newContext();
+    const errors = [];
+    let geminiPrompt = '';
+    // Serve the tool over https (TikTok pages cannot navigate to file://)
+    await ctx.route('https://tool.test/**', (route) => {
+      const p = new URL(route.request().url()).pathname.replace(/^\//, '') || 'index.html';
+      const file = path.join(root, p);
+      if (!file.startsWith(root) || !fs.existsSync(file)) return route.fulfill({ status: 404, body: '' });
+      route.fulfill({ body: fs.readFileSync(file), contentType: p.endsWith('.js') ? 'text/javascript' : 'text/html; charset=utf-8' });
+    });
+    const userDetail = { userInfo: { user: { uniqueId: 'demo_koc', nickname: 'Demo Skincare', signature: 'Review skincare chân thật, Sài Gòn' }, stats: { followerCount: 152000, heartCount: 3000000, videoCount: 200 } } };
+    const item = (id, desc, views, pinned) => `<div data-e2e="user-post-item"><a href="https://www.tiktok.com/@demo_koc/video/${id}"><img alt="${desc} created by Demo Skincare with original sound"></a><strong data-e2e="video-views">${views}</strong>${pinned ? '<div data-e2e="video-card-badge">Đã ghim</div>' : ''}</div>`;
+    const profileHtml = `<html><body><script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">${JSON.stringify({ __DEFAULT_SCOPE__: { 'webapp.user-detail': userDetail } })}</script>
+      <h1 data-e2e="user-title">demo_koc</h1><h2 data-e2e="user-subtitle">Demo Skincare</h2>
+      ${item(1, 'Review serum vitamin C cho da dầu #reviewskincare #fyp', '45.2K', false)}
+      ${item(2, 'Kem chống nắng nâng tone #skincare', '60K', false)}
+      ${item(3, 'Săn sale mỹ phẩm, mã giảm giá ở giỏ hàng #quangcao #skincare', '38K', false)}
+      ${item(4, 'Video viral', '2.1M', true)}
+      </body></html>`;
+    const videoItem = { id: '123', desc: 'Test serum 7 ngày #skincare', stats: { playCount: 100000, diggCount: 9000, commentCount: 600, shareCount: 400 },
+      author: { uniqueId: 'demo_koc', nickname: 'Demo Skincare' }, authorStats: { followerCount: 152000, heartCount: 3000000, videoCount: 200 },
+      video: { subtitleInfos: [{ LanguageCodeName: 'eng-US', Url: 'https://sub.test/en.vtt' }, { LanguageCodeName: 'vie-VN', Url: 'https://sub.test/vi.vtt' }] } };
+    const videoHtml = (dataId) => `<html><body><script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">${JSON.stringify({ __DEFAULT_SCOPE__: { 'webapp.video-detail': { itemInfo: { itemStruct: { ...videoItem, id: dataId } } } } })}</script>
+      <span data-e2e="browse-username">Demo Skincare</span><div data-e2e="browse-video-desc">Test serum 7 ngày</div></body></html>`;
+    await ctx.route('https://www.tiktok.com/**', (route) => {
+      const u = new URL(route.request().url());
+      if (u.pathname === '/@demo_koc') return route.fulfill({ body: profileHtml, contentType: 'text/html; charset=utf-8' });
+      if (u.pathname === '/@demo_koc/video/123') return route.fulfill({ body: videoHtml('123'), contentType: 'text/html; charset=utf-8' });
+      if (u.pathname === '/@demo_koc/video/999') return route.fulfill({ body: videoHtml('123'), contentType: 'text/html; charset=utf-8' }); // stale SPA data
+      route.fulfill({ status: 404, body: '' });
+    });
+    await ctx.route('https://sub.test/**', (route) => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, contentType: 'text/vtt',
+      body: route.request().url().endsWith('vi.vtt') ? 'WEBVTT\n\n00:00.000 --> 00:02.000\nHôm nay mình test serum vitamin C cho da dầu mụn\n' : 'WEBVTT\n\n00:00.000 --> 00:02.000\nEnglish line\n' }));
+    await ctx.route('https://generativelanguage.googleapis.com/**', (route) => {
+      geminiPrompt = JSON.parse(route.request().postData()).contents[0].parts[0].text;
+      const ai = { categories: ['beauty'], gender: 'nu', ages: ['18-24', '25-34'], location: 'TP.HCM', contentStyle: 'Review chân thật, quay cận cảnh', audienceGuess: 'Nữ 18-30 da dầu', brandSafety: 'an toàn', brandSafetyNotes: '', competitorMentions: ['Brand Y'], fitScore: 88, fitReasons: ['Đúng ngành skincare'], summary: 'Kênh review skincare uy tín.' };
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '```json\n' + JSON.stringify(ai) + '\n```' }] } }] }) });
+    });
+
+    const TOOL = 'https://tool.test/index.html';
+    const tool = await ctx.newPage();
+    tool.on('pageerror', (e) => errors.push(e.message));
+    await tool.goto(TOOL);
+    await tool.waitForFunction(() => typeof buildGrabBookmarklet === 'function');
+    await tool.evaluate(() => fillBriefForm(KocMatcher.normalizeBrief({ brand: 'Glow Lab', categories: ['beauty'], platforms: ['TikTok'], gender: 'nu', ages: ['18-24'], locations: ['TP.HCM'], totalBudget: 50000000, kocCount: 5 })));
+    const code = await tool.evaluate((u) => buildGrabBookmarklet(u), TOOL);
+    check(code.startsWith('javascript:') && code.length < 20000, 'Bookmarklet code generated', code.length);
+
+    const tiktok = await ctx.newPage();
+    const runBookmarklet = async (url) => {
+      await tiktok.goto(url);
+      const [popup] = await Promise.all([ctx.waitForEvent('page'), tiktok.evaluate((c) => { (0, eval)(decodeURIComponent(c.slice('javascript:'.length))); }, code)]);
+      popup.on('pageerror', (e) => errors.push(e.message));
+      await popup.waitForURL(/tool\.test/);
+      await popup.waitForSelector('#grab-modal.flex', { timeout: 5000 });
+      await popup.waitForTimeout(300);
+      return popup;
+    };
+
+    // Profile (no API key -> rule-based)
+    let p1 = await runBookmarklet('https://www.tiktok.com/@demo_koc');
+    let body = await p1.textContent('#grab-body');
+    check(body.includes('Demo Skincare') && body.includes('152K') && body.includes('45.2K'), 'Profile grab: name, followers, median views (pinned excluded)', body.slice(0, 200));
+    check(/Làm đẹp/.test(body) && body.includes('#skincare') && body.includes('25%'), 'Profile grab: category, hashtags, sponsored ratio', body);
+    check(/điểm theo brief Glow Lab/.test(body), 'Profile grab: scored against current brief');
+    check(await p1.evaluate(() => location.hash === '#brief'), 'Grab payload removed from URL');
+    await p1.click('#btn-grab-save');
+    let saved = await p1.evaluate(() => kocs.find(k => k.link === 'https://www.tiktok.com/@demo_koc'));
+    check(saved && saved.followers === 152000 && saved.avgViews === 45200 && saved.categories.includes('beauty') && saved.analysis && saved.analysis.hashtags.includes('reviewskincare'), 'Profile grab saved to Kho KOC', JSON.stringify(saved));
+    await p1.close();
+
+    // Video with Vietnamese subtitles + AI
+    await tool.evaluate(() => localStorage.setItem('gemini_api_key_v2', 'test_key'));
+    let p2 = await runBookmarklet('https://www.tiktok.com/@demo_koc/video/123');
+    await p2.waitForFunction(() => currentGrab && currentGrab.aiState === 'done', null, { timeout: 5000 });
+    body = await p2.textContent('#grab-body');
+    check(body.includes('đã có trong Kho KOC') && body.includes('Kênh review skincare uy tín') && body.includes('88/100') && body.includes('Brand Y'), 'Video grab: existing KOC detected, AI analysis shown', body.slice(0, 400));
+    check(geminiPrompt.includes('Hôm nay mình test serum vitamin C') && !geminiPrompt.includes('English line'), 'Video grab: Vietnamese subtitle preferred and sent to AI');
+    await p2.click('#btn-grab-save');
+    saved = await p2.evaluate(() => kocs.filter(k => k.link === 'https://www.tiktok.com/@demo_koc'));
+    check(saved.length === 1 && saved[0].er === 10 && saved[0].gender === 'nu' && saved[0].analysis.transcripts.length === 1 && saved[0].analysis.ai.fitScore === 88 && saved[0].avgViews === 45200,
+      'Video grab merged into same KOC (ER from video, AI fields, transcript kept, avg views kept)', JSON.stringify(saved[0] || {}).slice(0, 300));
+    await p2.close();
+
+    // Stale SPA data
+    await tool.evaluate(() => localStorage.removeItem('gemini_api_key_v2'));
+    let p3 = await runBookmarklet('https://www.tiktok.com/@demo_koc/video/999');
+    body = await p3.textContent('#grab-body');
+    check(body.includes('F5') && !(await p3.evaluate(() => currentGrab.summary.transcript)), 'Stale TikTok data detected, no wrong subtitle used');
+    await p3.close();
+
+    // Search suggestions
+    await tool.reload();
+    await tool.waitForFunction(() => typeof suggestSearchTerms === 'function');
+    await tool.click('text=⚡ Tạo từ khóa');
+    const links = await tool.$$eval('#search-suggestions a', (as) => as.map(a => a.href));
+    check(links.some(h => h.startsWith('https://www.tiktok.com/search/user?q=')) && links.some(h => h.startsWith('https://www.tiktok.com/tag/')), 'Search suggestions link to TikTok', links.slice(0, 3).join(' '));
+
+    check(!errors.length, 'No page errors (bookmarklet)', errors.join(' | '));
+    await ctx.close();
+  }
+
   await browser.close();
   console.log(failures ? `\n${failures} FAILED` : '\nAll browser tests passed');
   process.exit(failures ? 1 : 0);

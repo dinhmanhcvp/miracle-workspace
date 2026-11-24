@@ -221,10 +221,8 @@ const saveSettings = () => {
 // ================= BOOKMARKLET =================
 const getToolUrl = () => location.href.split('#')[0].split('?')[0];
 
-const buildBookmarkletCode = (toolUrl) => {
-    const src = `(function(){var n='',f='',h=location.hostname,q=function(s){var e=document.querySelector(s);return e?e.innerText.trim():''};if(h.indexOf('tiktok.com')>-1){n=q('[data-e2e="user-title"]')||q('[data-e2e="user-subtitle"]');f=q('[data-e2e="followers-count"]');}else if(h.indexOf('youtube.com')>-1){n=q('#channel-name #text')||q('yt-dynamic-text-view-model h1')||q('h1');f=(q('#subscriber-count')||q('yt-content-metadata-view-model')).replace(/subscribers?|người đăng ký/gi,'').split('•').filter(function(x){return /\\d/.test(x)&&/(subscriber|đăng ký|[kmb])/i.test(x)})[0]||q('#subscriber-count');}else{n=q('h1')||q('h2');}if(!n)n=prompt('Không tìm thấy tên. Nhập tên KOC:')||'';if(!f)f=prompt('Không tìm thấy Follower. Nhập số Follower (VD 120k):')||'';var d=localStorage.getItem('miracle_tool_url')||${JSON.stringify(toolUrl)},u=prompt('Đường dẫn Tool (Enter để dùng mặc định):',d);if(u){try{localStorage.setItem('miracle_tool_url',u)}catch(e){}window.open(u+(u.indexOf('?')>-1?'&':'?')+'name='+encodeURIComponent(n)+'&link='+encodeURIComponent(location.href)+'&followers='+encodeURIComponent(f),'_blank');}})();`;
-    return 'javascript:' + src;
-};
+// The bookmarklet source lives in assets/grab.js (grabKocPage)
+const buildBookmarkletCode = (toolUrl) => buildGrabBookmarklet(toolUrl);
 
 const setupBookmarklet = () => {
     const url = getToolUrl();

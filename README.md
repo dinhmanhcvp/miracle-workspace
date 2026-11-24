@@ -17,7 +17,15 @@ Chạy hoàn toàn trên trình duyệt (HTML + JS thuần), không cần server
 | Quản lý | Weekly Report | Dòng báo cáo tuần |
 | | Kho PNL & Báo cáo | Dashboard doanh thu/lợi nhuận, copy hàng loạt, sao lưu/khôi phục JSON |
 
-Thêm: **Magic Bookmarklet** lấy Tên/Link/Follower từ TikTok/YouTube/Facebook đổ vào tool.
+### Tìm KOC trên TikTok (bán tự động)
+
+- **Gợi ý từ khóa:** từ brief, tool (hoặc AI) tạo danh sách link tìm tài khoản / video / hashtag trên TikTok.
+- **Bookmarklet "🪄 Phân tích KOC":** đang xem profile TikTok, bấm 1 lần, tool đọc tên, bio, follower, lượt xem, caption, hashtag các video đang hiển thị; trên trang video thì lấy thêm **phụ đề** và ER thật của video. Sau đó:
+  - phân tích theo quy tắc: ngành, view trung vị (bỏ video ghim), ER ước tính, % video có dấu hiệu quảng cáo, hashtag hay dùng
+  - nếu có Gemini key: AI nhận xét phong cách, khán giả, an toàn thương hiệu, brand từng quảng cáo, mức phù hợp brief
+  - chấm điểm theo brief hiện tại và lưu / cập nhật vào Kho KOC
+
+Tool chỉ đọc dữ liệu trên trang người dùng đang mở (không tự quét TikTok). Cấu trúc trang TikTok có thể thay đổi; khi đó bookmarklet dùng phương án dự phòng đọc từ giao diện.
 
 ## Cách chấm điểm KOC
 
@@ -51,6 +59,7 @@ index.html          giao diện
 assets/matcher.js   logic thuần: đọc brief, chấm điểm, xếp hạng, shortlist, CSV (chạy được cả trong Node)
 assets/app.js       quy trình booking (xin giá, PNL, báo giá, báo cáo, cài đặt, AI)
 assets/koc.js       Kho KOC + giao diện Brief & Gợi ý
+assets/grab.js      bookmarklet Phân tích KOC + gợi ý tìm kiếm TikTok
 miracle-guide.html  hướng dẫn sử dụng
 tests/              unit test (Node) + test trình duyệt (Playwright)
 ```
@@ -60,5 +69,5 @@ tests/              unit test (Node) + test trình duyệt (Playwright)
 ```bash
 node --test tests/matcher.test.js   # unit test bộ chấm điểm
 npm i -D playwright                 # nếu chưa có
-node tests/run-tests.js             # test trình duyệt: bộ test trong app + kịch bản end-to-end
+node tests/run-tests.js             # test trình duyệt: bộ test trong app, end-to-end, bookmarklet trên trang TikTok giả lập
 ```

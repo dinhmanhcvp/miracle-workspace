@@ -117,3 +117,56 @@ test('CSV export round-trips through import', () => {
   assert.equal(back.gender, 'nu');
   assert.equal(back.rate, 8000000);
 });
+
+test('parseSubtitles strips WebVTT timing and duplicates', () => {
+  const vtt = 'WEBVTT\n\n1\n00:00:00.000 --> 00:00:02.000\nXin chào cả nhà\n\n2\n00:00:02.000 --> 00:00:04.000\n<c>Xin chào cả nhà</c>\n\n00:00:04.000 --> 00:00:06.000\nHôm nay mình review serum';
+  assert.equal(M.parseSubtitles(vtt), 'Xin chào cả nhà Hôm nay mình review serum');
+});
+
+test('parseNumber reads TikTok/Vietnamese counters', () => {
+  assert.equal(M.parseNumber('45.2K'), 45200);
+  assert.equal(M.parseNumber('1,5 N'), 1500);
+  assert.equal(M.parseNumber('2.1M'), 2100000);
+});
+
+test('summarizeGrab: profile page', () => {
+  const s = M.summarizeGrab({
+    v: 1, source: 'tiktok', type: 'profile', handle: 'demo', name: 'Demo', bio: 'Review skincare Sài Gòn',
+    followers: 150000, likes: 3000000, videoCount: 200,
+    videos: [
+      { desc: 'Review serum vitamin C #reviewskincare #fyp created by Demo with sound', viewsText: '40K' },
+      { desc: 'Kem chống nắng cho da dầu #skincare', viewsText: '60K' },
+      { desc: 'Mã giảm giá ở giỏ hàng nha #quangcao #skincare', viewsText: '50K' },
+      { desc: 'Video ghim', viewsText: '5M', pinned: true },
+    ],
+  });
+  assert.equal(s.avgViews, 50000, 'median without pinned');
+  assert.equal(s.link, 'https://www.tiktok.com/@demo');
+  assert.equal(s.platform, 'TikTok');
+  assert.deepEqual(s.categories, ['beauty']);
+  assert.deepEqual(s.locations, ['TP.HCM']);
+  assert.equal(s.hashtags[0], 'skincare');
+  assert.ok(!s.hashtags.includes('fyp'));
+  assert.equal(s.sponsoredCount, 1);
+  assert.equal(s.er, 1.2); // (3M likes / 200 videos) / mean views 1.2875M
+  assert.ok(!/created by/.test(s.captions[0]));
+});
+
+test('summarizeGrab: video page with transcript uses video ER', () => {
+  const s = M.summarizeGrab({ v: 1, source: 'tiktok', type: 'video', url: 'https://www.tiktok.com/@demo/video/1', handle: 'demo', name: 'Demo',
+    video: { desc: 'Unbox laptop gaming', views: 100000, likes: 8000, comments: 1000, shares: 1000, transcriptRaw: 'WEBVTT\n\n00:00.000 --> 00:01.000\nHôm nay mình review laptop' } });
+  assert.equal(s.er, 10);
+  assert.equal(s.avgViews, 100000);
+  assert.equal(s.transcript, 'Hôm nay mình review laptop');
+  assert.ok(s.categories.includes('tech'));
+  assert.equal(s.videoUrl, 'https://www.tiktok.com/@demo/video/1');
+});
+
+test('buildSearchTerms gives Vietnamese terms and hashtags', () => {
+  const r = M.buildSearchTerms({ categories: ['beauty'], locations: ['TP.HCM'], product: 'serum vitamin C' });
+  assert.equal(r.terms[0], 'review serum vitamin c');
+  assert.ok(r.terms.includes('review mỹ phẩm'));
+  assert.ok(r.hashtags.includes('reviewmypham'));
+  assert.ok(r.terms.some(t => t.includes('sài gòn')));
+  assert.deepEqual(M.buildSearchTerms({}).terms, []);
+});
