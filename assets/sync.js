@@ -6,6 +6,9 @@
  * - Deletions are sent as tombstones (deleted = TRUE in the Sheet) so other clients drop them too.
  * Depends on app.js (storage, PNL/report state, blacklist), koc.js (kocs) and matcher.js.
  */
+// Captured before app.js rewrites the hash on startup
+const INITIAL_JOIN_HASH = location.hash;
+
 window.Sync = (() => {
     const KM = KocMatcher;
     const nowIso = () => new Date().toISOString();
@@ -64,6 +67,14 @@ window.Sync = (() => {
                 scope: pick(row, 'Hạng mục công việc'), paymentTerm: pick(row, 'Payment term'),
             }),
         },
+        config: {
+            label: 'Cấu hình',
+            list: () => { const c = getAgencyConfig(); return c.updatedAt || safeStorage.get(CONFIG_KEY, null) ? [c] : []; },
+            replace: (list) => { if (list[0]) setAgencyConfig(list[0], { track: false }); },
+            columns: [['Mục', () => 'Cấu hình agency (sửa trong tool)'], ['Tên agency', c => c.agencyName], ['Margin mặc định (%)', c => c.pricing.pct],
+                ['Giảm giá (%)', c => c.pricing.discountPct], ['Phí CB (%)', c => c.pricing.cbPct]],
+            fromSheet: (data, row) => normalizeAgencyConfig({ ...(data || {}), agencyName: pick(row, 'Tên agency') || (data || {}).agencyName || '' }),
+        },
         reports: {
             label: 'Báo cáo tuần',
             list: () => savedReports,
@@ -78,7 +89,7 @@ window.Sync = (() => {
         },
     };
     // Columns stored as plain text in the Sheet (keeps leading zeros of phone numbers, "18–24", links...)
-    const TEXT_COLUMNS = {kocs: ["Tên", "Nền tảng", "Link", "Contact", "Nhóm / Ngành", "Giới tính khán giả", "Độ tuổi khán giả", "Khu vực", "Loại thuế", "Hạng mục công việc", "Payment term", "Trạng thái", "Ghi chú"], blacklist: ["Tên", "Link", "Dự án", "Lý do"], pnl: ["Tên", "Contact", "Link kênh", "Followers", "Hạng mục công việc", "Đơn vị tính", "Loại thuế (Y)", "Nền tảng", "Payment term"], reports: ["Client", "Campaign", "Status", "Margin Before", "Margin After", "Kết quả", "Lỗi sai"]};
+    const TEXT_COLUMNS = {config: ["Mục", "Tên agency"], kocs: ["Tên", "Nền tảng", "Link", "Contact", "Nhóm / Ngành", "Giới tính khán giả", "Độ tuổi khán giả", "Khu vực", "Loại thuế", "Hạng mục công việc", "Payment term", "Trạng thái", "Ghi chú"], blacklist: ["Tên", "Link", "Dự án", "Lý do"], pnl: ["Tên", "Contact", "Link kênh", "Followers", "Hạng mục công việc", "Đơn vị tính", "Loại thuế (Y)", "Nền tảng", "Payment term"], reports: ["Client", "Campaign", "Status", "Margin Before", "Margin After", "Kết quả", "Lỗi sai"]};
     const NAMES = Object.keys(COLLECTIONS);
 
     // ---- Persistent sync state ----
@@ -245,6 +256,8 @@ window.Sync = (() => {
         try { renderDbTables(); } catch (e) { }
         try { refreshBriefEmptyState(); } catch (e) { }
         try { checkBlacklist(); } catch (e) { }
+        try { if (currentTabId === 'config') renderConfigTab(); } catch (e) { }
+        try { renderOnboarding(); } catch (e) { }
     };
 
     /** Pull, merge, then push local changes. */
@@ -365,11 +378,54 @@ window.Sync = (() => {
         setStatus('off');
     };
 
+    // ---- Invite links: the lead shares one link, members open it and type their name ----
+    const toB64url = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const fromB64url = (s) => { const b = s.replace(/-/g, '+').replace(/_/g, '/'); return decodeURIComponent(escape(atob(b + '==='.slice((b.length + 3) % 4)))); };
+    const buildInviteLink = () => {
+        const c = config();
+        if (!c.url || !c.token) return '';
+        // in the #fragment: never sent to the web host
+        return `${location.href.split('#')[0].split('?')[0]}#join=${toB64url(JSON.stringify({ v: 1, url: c.url, token: c.token, agency: rawAgencyName() }))}`;
+    };
+    let pendingJoin = null;
+    const parseJoin = (hash) => {
+        const m = String(hash || '').match(/^#join=([A-Za-z0-9_-]+)$/);
+        if (!m) return null;
+        try { const j = JSON.parse(fromB64url(m[1])); return j && j.url && j.token ? j : null; } catch (e) { return null; }
+    };
+    const openJoin = (invite) => {
+        pendingJoin = invite;
+        $('join-agency').textContent = invite.agency || 'team';
+        $('join-name').value = config().user || '';
+        const c = config();
+        $('join-warning').textContent = c.url && c.url !== invite.url ? 'Máy này đang kết nối một team khác; tham gia sẽ chuyển sang team mới.' : '';
+        openModal('join');
+        setTimeout(() => $('join-name').focus(), 50);
+    };
+    const joinTeam = async () => {
+        if (!pendingJoin) return;
+        const user = $('join-name').value.trim();
+        if (!user) return showToast('Nhập tên của bạn để team biết ai làm gì', 'error');
+        const prev = config();
+        safeStorage.set(STORAGE.sync, JSON.stringify({ url: pendingJoin.url, token: pendingJoin.token, user }));
+        if (prev.url !== pendingJoin.url) { state = emptyState(); NAMES.forEach(c => { state.snapshots[c] = {}; state.dirty[c] = []; state.tombstones[c] = {}; state.synced[c] = {}; }); saveState(); }
+        pendingJoin = null;
+        closeModal('join');
+        const ok = await syncNow(true);
+        if (ok) {
+            rerender();
+            try { renderSidebar(); switchTab(currentTabId); } catch (e) { }
+            showToast(`Chào ${user}! Đã vào team ${rawAgencyName() || ''}. Tiếp theo: cài bookmark "Phân tích KOC".`);
+        }
+    };
+
     // Used by the in-app test suite so test data never reaches the team Sheet
     const pause = () => { paused = true; clearTimeout(pushTimer); return { state: JSON.parse(JSON.stringify(state)) }; };
     const resume = (snap) => { paused = false; if (snap && snap.state) { state = snap.state; saveState(); } snapshotAll(); };
 
     document.addEventListener('DOMContentLoaded', () => {
+        const invite = parseJoin(INITIAL_JOIN_HASH);
+        if (invite) { try { history.replaceState(null, '', location.pathname + '#brief'); } catch (e) { } setTimeout(() => openJoin(invite), 0); }
         // runs after app.js / koc.js init (registration order)
         if (!state.lastSync) snapshotAll();
         else {
@@ -384,5 +440,5 @@ window.Sync = (() => {
         }
     });
 
-    return { changed, syncNow, fillSettings, saveSettings, testConnection, disconnect, pause, resume, isConfigured, COLLECTIONS, _state: () => state };
+    return { changed, syncNow, fillSettings, saveSettings, testConnection, disconnect, pause, resume, isConfigured, buildInviteLink, joinTeam, COLLECTIONS, _state: () => state };
 })();

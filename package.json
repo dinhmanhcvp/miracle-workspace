@@ -1,0 +1,21 @@
+{
+  "name": "koc-booking-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Công cụ cho agency booking KOC: gợi ý KOC theo brief, PRE PNL, báo giá, đồng bộ team qua Google Sheets",
+  "scripts": {
+    "build": "tailwindcss -c tailwind.config.js -i src/styles.css -o assets/app.css --minify",
+    "vendor": "node tools/vendor.js",
+    "test:unit": "node --test tests/matcher.test.js tests/apps-script.test.js",
+    "test:browser": "node tests/run-tests.js",
+    "test": "npm run test:unit && npm run test:browser",
+    "license": "node tools/license.js",
+    "dist": "node tools/dist.js"
+  },
+  "devDependencies": {
+    "dompurify": "3.1.6",
+    "marked": "12.0.2",
+    "tailwindcss": "3.4.17",
+    "xlsx": "0.18.5"
+  }
+}

@@ -256,3 +256,19 @@ test('importTable reads PRE PNL header layout and a blacklist sheet', () => {
   assert.deepEqual([bl.records[0].name, bl.records[0].project, bl.records[0].reason], ['Demo Bad', 'Demo project', 'Không hợp tác']);
   assert.equal(M.handleFromLink('https://www.tiktok.com/@Demo_Bad?lang=vi'), 'tiktok:demo_bad');
 });
+
+test('rates are configurable per agency', () => {
+  try {
+    M.configureRates({ tax: { PIT: 10, HKD: 5 }, cbTaxPct: 10, backup: { TikTok: { view: 4, eng: 0 } } });
+    const p = M.calcPnl({ A: 1000000, X: 500000, taxType: 'PIT', cbPct: 10, discountPct: 0, platform: 'TikTok', kpiView: 1000 });
+    assert.equal(Math.round(p.F), 50000);
+    assert.equal(Math.round(p.H), 10000);
+    assert.equal(p.M, 4000);
+    const A = M.solvePrice({ X: 500000, taxType: 'HKD', pct: 30, cbPct: 10, discountPct: 0, roundTo: 0 });
+    assert.ok(Math.abs(M.calcPnl({ A, X: 500000, taxType: 'HKD', cbPct: 10 }).L - 0.3) < 1e-6);
+    assert.equal(M.getRates().backup.FB.eng, 35, 'unspecified rates keep defaults');
+  } finally {
+    M.configureRates({});
+  }
+  assert.equal(Math.round(M.calcPnl({ A: 0, X: 900, taxType: 'PIT' }).F), 100);
+});

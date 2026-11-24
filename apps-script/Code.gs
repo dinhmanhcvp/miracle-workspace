@@ -12,7 +12,7 @@
  * To delete a row for everyone, set column "deleted" to TRUE (or delete it in the tool).
  */
 
-var SHEET_NAMES = { kocs: 'Kho KOC', blacklist: 'Blacklist', pnl: 'Kho PNL', reports: 'Báo cáo tuần' };
+var SHEET_NAMES = { kocs: 'Kho KOC', blacklist: 'Blacklist', pnl: 'Kho PNL', reports: 'Báo cáo tuần', config: 'Cấu hình' };
 var META_HEAD = ['id'];
 var META_TAIL = ['updatedAt', 'updatedBy', 'deleted', '_data'];
 var MAX_CELL = 45000;
