@@ -1,38 +1,64 @@
-# The Miracle Workspace
+# KOC Booking Workspace
 
-Công cụ nội bộ (1 file HTML, không cần server) hỗ trợ quy trình **Booking KOC/KOL** từ A–Z:
+Công cụ cho **agency booking KOC/KOL**: dán brief của brand, tool **tự gợi ý các KOC phù hợp** trong kho KOC của agency (có điểm và lý do), chọn shortlist vừa ngân sách, rồi đi tiếp toàn bộ quy trình booking.
 
-| Bước | Tính năng |
-|---|---|
-| 1. Scouting & Xin Giá | Check blacklist (có thể bổ sung trong Cài đặt), gợi ý theo ngành, chọn FOC, AI soạn tin nhắn xin giá (VI/EN) |
-| 2. Proceed Internal | Tính thuế (PIT/VAT/HKD), phí backup theo nền tảng, tổng giá vốn; copy dòng PRE PNL 22 cột; lưu vào kho |
-| 3. Proceed External | Tính giá bán theo **Margin mục tiêu** hoặc **Markup**; copy dòng báo giá cho khách |
-| 4. Confirm Booking | AI soạn tin nhắn ép giá (VI/EN); mẫu tin nhắn xác nhận |
-| 5. Weekly Report | Tạo/lưu dòng báo cáo tuần |
-| 6. Kho dữ liệu | Dashboard doanh thu/lợi nhuận, copy hàng loạt ra Excel, xóa từng dòng, sao lưu/khôi phục JSON |
+Chạy hoàn toàn trên trình duyệt (HTML + JS thuần), không cần server, có thể host miễn phí trên GitHub Pages.
 
-Thêm: **Magic Bookmarklet** lấy Tên/Link/Follower từ TikTok/YouTube/Facebook và điền sẵn vào Bước 2.
+## Tính năng
+
+| Nhóm | Tab | Chức năng |
+|---|---|---|
+| Tìm KOC | **Brief & Gợi ý KOC** | Dán brief, tool tự đọc tiêu chí (AI Gemini hoặc bộ đọc từ khóa không cần AI), chấm điểm 0–100 từng KOC kèm lý do, loại KOC trong blacklist / sai nền tảng / vượt ngân sách, tự chọn shortlist theo ngân sách, copy shortlist gửi brand (ẩn giá nhập) hoặc bản nội bộ |
+| | **Kho KOC** | Thêm/sửa/xóa KOC; dán thẳng từ Excel/Google Sheets; import/export CSV; file mẫu; dữ liệu mẫu để dùng thử |
+| Booking | Scouting & Xin Giá | Check blacklist, gợi ý theo ngành, chọn FOC, AI soạn tin xin giá (VI/EN) |
+| | Proceed Internal | Thuế (PIT/VAT/HKD), phí backup theo nền tảng, tổng giá vốn; copy dòng PRE PNL 22 cột |
+| | Proceed External | Giá bán theo Margin mục tiêu hoặc Markup; copy dòng báo giá |
+| | Confirm Booking | AI soạn tin ép giá; mẫu tin xác nhận |
+| Quản lý | Weekly Report | Dòng báo cáo tuần |
+| | Kho PNL & Báo cáo | Dashboard doanh thu/lợi nhuận, copy hàng loạt, sao lưu/khôi phục JSON |
+
+Thêm: **Magic Bookmarklet** lấy Tên/Link/Follower từ TikTok/YouTube/Facebook đổ vào tool.
+
+## Cách chấm điểm KOC
+
+| Tiêu chí | Điểm | Ghi chú |
+|---|---|---|
+| Ngành | 30 | KOC sai ngành bị nhân hệ số 0,6 trên tổng điểm |
+| Ngân sách | 20 | So giá bán ước tính với ngân sách / số KOC |
+| Khán giả | 15 | Giới tính, độ tuổi, khu vực |
+| Hiệu quả | 15 | ER và tỷ lệ view TB / follower |
+| Phân khúc | 10 | Nano / Micro / Mid / Macro / Mega |
+| Chất lượng | 10 | Đánh giá nội bộ + khớp từ khóa |
+
+Điều kiện loại bắt buộc: nằm trong blacklist, sai nền tảng yêu cầu, giá vượt tổng ngân sách, KOC đang tạm ngưng.
+Giá bán ước tính = (Giá nhập + Thuế) cộng margin theo cài đặt ở tab Proceed External (chưa gồm phí backup).
 
 ## Sử dụng
 
-Mở `index.html` bằng trình duyệt (double-click hoặc host trên GitHub Pages). Hướng dẫn chi tiết: `miracle-guide.html`.
+1. Mở trang (GitHub Pages) hoặc mở `index.html` trực tiếp.
+2. ⚙️ **Cài đặt**: nhập tên agency, Gemini API Key (không bắt buộc, lấy tại https://aistudio.google.com) và blacklist.
+3. **Kho KOC**: dán danh sách KOC (bấm *File mẫu* để xem đúng cột) hoặc bấm *Dữ liệu mẫu* để thử.
+4. **Brief & Gợi ý KOC**: dán brief ➝ *Gợi ý KOC phù hợp* ➝ *Tự chọn shortlist theo ngân sách*.
 
-- **AI:** vào ⚙️ Cài đặt, dán Gemini API Key (lấy tại https://aistudio.google.com). Model mặc định `gemini-2.5-flash`, đổi được trong Cài đặt. Không có key hoặc AI lỗi thì tool tự dùng văn mẫu.
-- **Dữ liệu** lưu trong `localStorage` của trình duyệt đang dùng. Hãy dùng nút **Sao lưu (JSON)** ở Bước 6 để không mất dữ liệu.
+Hướng dẫn chi tiết: `miracle-guide.html`.
 
-## Công thức tính
+**Dữ liệu** lưu trong `localStorage` của trình duyệt đang dùng, mỗi người một kho riêng. Chia sẻ kho KOC qua Export/Import CSV; sao lưu PNL bằng nút *Sao lưu (JSON)*.
 
-- Thuế: PIT = Lương / 9 · VAT = 0 · HKD = Lương × 7%
-- Backup = KPI × hệ số (TikTok 3,5 · FB 35 · YT 35 · Threads 700)
-- Tổng giá vốn = Lương + Thuế + Backup
-- Giá bán: Margin → `Giá vốn / (1 − m%)`; Markup → `Giá vốn × (1 + m%)`
-- Lợi nhuận gộp = Giá bán − Tổng giá vốn
+## Cấu trúc
+
+```
+index.html          giao diện
+assets/matcher.js   logic thuần: đọc brief, chấm điểm, xếp hạng, shortlist, CSV (chạy được cả trong Node)
+assets/app.js       quy trình booking (xin giá, PNL, báo giá, báo cáo, cài đặt, AI)
+assets/koc.js       Kho KOC + giao diện Brief & Gợi ý
+miracle-guide.html  hướng dẫn sử dụng
+tests/              unit test (Node) + test trình duyệt (Playwright)
+```
 
 ## Kiểm thử
 
 ```bash
-npm i -D playwright   # nếu chưa có
-node tests/run-tests.js
+node --test tests/matcher.test.js   # unit test bộ chấm điểm
+npm i -D playwright                 # nếu chưa có
+node tests/run-tests.js             # test trình duyệt: bộ test trong app + kịch bản end-to-end
 ```
-
-Hoặc trong app: ⚙️ Cài đặt → **Chạy test**. Bộ test chạy trên bản sao trạng thái và **không** thay đổi dữ liệu thật.
