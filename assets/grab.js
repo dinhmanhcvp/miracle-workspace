@@ -190,7 +190,7 @@ const renderGrabModal = () => {
     if (summary.transcriptError) warnings.push('Không tải được phụ đề của video này.');
     if (summary.isVideo && !summary.transcript && !summary.stale && !summary.transcriptError) warnings.push('Video này không có phụ đề, chỉ phân tích caption.');
     if (!summary.videosAnalyzed && !summary.isVideo) warnings.push('Không đọc được video nào trên trang. Hãy cuộn xuống để lưới video hiện ra rồi bấm bookmark lại.');
-    if (findBlacklisted(draft.name)) warnings.unshift('⛔ KOC này nằm trong BLACKLIST của agency.');
+    if (findBlacklisted(draft.name, draft.link)) warnings.unshift('⛔ KOC này nằm trong BLACKLIST của agency.');
 
     $('grab-body').innerHTML = `
         <div class="flex flex-wrap gap-4 items-start justify-between">
@@ -303,7 +303,7 @@ const saveGrabbedKoc = ({ addToShortlist = false, toPnl = false } = {}) => {
     if (!currentGrab) return;
     renderGrabModal(); // refresh draft with latest AI result
     const draft = currentGrab.draft;
-    if (findBlacklisted(draft.name) && !confirm(`"${draft.name}" nằm trong blacklist. Vẫn lưu?`)) return;
+    if (findBlacklisted(draft.name, draft.link) && !confirm(`"${draft.name}" nằm trong blacklist. Vẫn lưu?`)) return;
     if (currentGrab.existingId) {
         const i = kocs.findIndex(k => k.id === currentGrab.existingId);
         if (i > -1) kocs[i] = { ...draft, id: currentGrab.existingId };

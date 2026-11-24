@@ -14,7 +14,7 @@ let shortlistIds = safeStorage.getJSON(STORAGE.shortlist, []);
 if (!Array.isArray(shortlistIds)) shortlistIds = [];
 let lastRanking = null; // { matches, excluded }
 
-const persistKocs = () => { safeStorage.set(STORAGE.kocs, JSON.stringify(kocs)); updateKocBadge(); };
+const persistKocs = ({ track = true } = {}) => { safeStorage.set(STORAGE.kocs, JSON.stringify(kocs)); updateKocBadge(); if (track && window.Sync) Sync.changed('kocs'); };
 const persistShortlist = () => safeStorage.set(STORAGE.shortlist, JSON.stringify(shortlistIds));
 const updateKocBadge = () => { const b = $('koc-count'); if (b) b.textContent = kocs.length; };
 
@@ -98,7 +98,7 @@ const renderKocTable = () => {
         tb.innerHTML = '<tr><td colspan="9" class="text-center text-gray-500 italic py-6">Không có KOC nào khớp bộ lọc.</td></tr>';
     } else {
         tb.innerHTML = list.map(k => `<tr class="${k.status === 'inactive' ? 'opacity-50' : ''}">
-            <td><div class="font-medium">${k.link ? `<a href="${escapeHtml(k.link)}" target="_blank" rel="noopener noreferrer" class="hover:text-brand-400">${escapeHtml(k.name)}</a>` : escapeHtml(k.name)}${findBlacklisted(k.name) ? ' <i class="fas fa-ban text-red-500" title="Blacklist"></i>' : ''}${k.demo ? ' <span class="text-[10px] px-1.5 rounded bg-dark-700 text-gray-400">mẫu</span>' : ''}</div>
+            <td><div class="font-medium">${k.link ? `<a href="${escapeHtml(k.link)}" target="_blank" rel="noopener noreferrer" class="hover:text-brand-400">${escapeHtml(k.name)}</a>` : escapeHtml(k.name)}${findBlacklisted(k.name, k.link) ? ' <i class="fas fa-ban text-red-500" title="Blacklist"></i>' : ''}${k.demo ? ' <span class="text-[10px] px-1.5 rounded bg-dark-700 text-gray-400">mẫu</span>' : ''}</div>
                 ${k.rating ? `<div class="text-xs text-yellow-500">${'★'.repeat(Math.round(k.rating))}</div>` : ''}</td>
             <td>${escapeHtml(labelOf(KM.PLATFORMS, k.platform) || '-')}</td>
             <td class="whitespace-nowrap">${k.followers ? KM.formatFollowers(k.followers) : '-'}</td>
@@ -106,7 +106,7 @@ const renderKocTable = () => {
             <td class="whitespace-nowrap">${k.er ? k.er + '%' : '-'}</td>
             <td class="text-xs">${(k.categories || []).map(c => escapeHtml(labelOf(KM.CATEGORIES, c))).join(', ') || '-'}</td>
             <td class="text-xs text-gray-400">${escapeHtml(kocAudienceText(k)) || '-'}</td>
-            <td class="whitespace-nowrap text-brand-400">${k.rate ? formatMoney(k.rate) : '-'}</td>
+            <td class="whitespace-nowrap text-brand-400" title="${k.lastQuote ? 'Giá bán gần nhất: ' + formatMoney(k.lastQuote) : ''}">${k.rate ? formatMoney(k.rate) : '-'}${k.lastQuote ? `<div class="text-[10px] text-gray-500">bán ${formatMoney(k.lastQuote)}</div>` : ''}</td>
             <td class="whitespace-nowrap text-right">
                 <button onclick="openKocModal('${k.id}')" class="text-gray-400 hover:text-white px-1" title="Sửa"><i class="fas fa-pen"></i></button>
                 <button onclick="deleteKoc('${k.id}')" class="text-gray-500 hover:text-red-500 px-1" title="Xóa"><i class="fas fa-times"></i></button>
@@ -191,42 +191,167 @@ const clearKocs = () => {
     showToast('Đã xóa');
 };
 
-const reportImport = ({ kocs: list, unknownHeaders, skipped, error }) => {
-    if (error) { showToast(error, 'error'); return false; }
-    if (!list.length) { showToast('Không đọc được KOC nào', 'error'); return false; }
-    const { added, updated } = upsertKocs(list);
-    renderKocTable();
-    let msg = `Đã nhập ${added} KOC mới, cập nhật ${updated} KOC`;
-    if (skipped) msg += `, bỏ qua ${skipped} dòng thiếu tên`;
-    showToast(msg);
-    if (unknownHeaders.length) setTimeout(() => showToast(`Bỏ qua cột không nhận ra: ${unknownHeaders.join(', ')}`, 'info'), 600);
-    return true;
+// ================= IMPORT (paste / CSV / .xlsx, with column mapping) =================
+const XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+let importState = { rows: null, sheets: null, workbook: null, fields: null, table: null };
+
+const loadScriptOnce = (src) => new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`) && window.XLSX) return resolve();
+    const el = document.createElement('script');
+    el.src = src;
+    el.onload = resolve;
+    el.onerror = () => reject(new Error('Không tải được thư viện đọc Excel (kiểm tra mạng)'));
+    document.head.appendChild(el);
+});
+
+const openImportModal = (target = 'koc') => {
+    importState = { rows: null, sheets: null, workbook: null, fields: null, table: null };
+    $('import-target').value = target;
+    $('paste-text').value = '';
+    $('import-file-xlsx').value = '';
+    $('import-sheet-wrap').classList.add('hidden');
+    $('import-mapping').innerHTML = '';
+    $('paste-preview').textContent = '';
+    openModal('paste');
 };
 
-const importKocPaste = () => {
-    const text = $('paste-text').value;
-    if (!text.trim()) return showToast('Chưa dán dữ liệu', 'error');
-    if (reportImport(KM.importKocsFromText(text))) {
+const sheetRows = (wb, name) => XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: '' });
+
+const loadImportFile = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    try {
+        if (/\.(csv|tsv|txt)$/i.test(file.name)) {
+            const text = await file.text();
+            $('paste-text').value = '';
+            importState = { rows: KM.parseDelimited(text), sheets: null };
+            $('import-sheet-wrap').classList.add('hidden');
+            return analyzeImport();
+        }
+        $('paste-preview').textContent = 'Đang đọc file...';
+        await loadScriptOnce(XLSX_SRC);
+        const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+        const target = $('import-target').value;
+        const hidden = new Set(((wb.Workbook && wb.Workbook.Sheets) || []).filter(x => x.Hidden).map(x => x.name));
+        const ranked = wb.SheetNames.map(name => {
+            const t = KM.detectTable(sheetRows(wb, name), target);
+            return { name, score: t ? t.score : 0, hidden: hidden.has(name) };
+        });
+        const best = ranked.filter(x => !x.hidden).sort((a, b) => b.score - a.score)[0] || ranked[0];
+        $('import-sheet').innerHTML = ranked.map(x => `<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}${x.hidden ? ' (ẩn)' : ''}${x.score ? ` – nhận ${x.score} cột` : ''}</option>`).join('');
+        $('import-sheet').value = best.name;
+        $('import-sheet-wrap').classList.remove('hidden');
         $('paste-text').value = '';
-        $('paste-preview').textContent = '';
-        closeModal('paste');
+        importState = { workbook: wb, rows: null };
+        selectImportSheet();
+    } catch (err) {
+        $('paste-preview').textContent = '⚠️ ' + err.message;
     }
 };
 
-const previewPaste = () => {
-    const text = $('paste-text').value;
-    if (!text.trim()) { $('paste-preview').textContent = ''; return; }
-    const r = KM.importKocsFromText(text);
-    $('paste-preview').textContent = r.error ? '⚠️ ' + r.error : `Nhận diện được ${r.kocs.length} KOC.${r.unknownHeaders.length ? ' Bỏ qua cột: ' + r.unknownHeaders.join(', ') : ''}`;
+const selectImportSheet = () => {
+    if (!importState.workbook) return;
+    importState.rows = sheetRows(importState.workbook, $('import-sheet').value);
+    importState.fields = null;
+    analyzeImport();
 };
 
-const importKocCsvFile = (event) => {
-    const file = event.target.files[0];
-    event.target.value = '';
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => reportImport(KM.importKocsFromText(reader.result));
-    reader.readAsText(file, 'utf-8');
+const analyzeImport = ({ keepFields = false } = {}) => {
+    const text = $('paste-text').value;
+    if (text.trim()) { importState.rows = KM.parseDelimited(text); if (!keepFields) importState.fields = null; }
+    const rows = importState.rows;
+    if (!rows || !rows.length) { $('import-mapping').innerHTML = ''; $('paste-preview').textContent = ''; return null; }
+    const target = $('import-target').value;
+    const r = KM.importTable(rows, { target, fields: keepFields ? importState.fields : undefined });
+    if (!keepFields) { importState.fields = r.table ? r.table.fields.slice() : null; importState.table = r.table; }
+    renderImportMapping(target);
+    const key = target === 'blacklist' ? 'mục blacklist' : 'KOC';
+    $('paste-preview').innerHTML = r.error ? '⚠️ ' + escapeHtml(r.error)
+        : `Đọc được <b class="text-white">${r.records.length}</b> ${key}${r.skipped ? `, bỏ qua ${r.skipped} dòng` : ''}. Ví dụ: ${r.records.slice(0, 5).map(x => escapeHtml(x.name || x.link)).join(', ')}${r.records.length > 5 ? '…' : ''}`;
+    importState.result = r;
+    return r;
+};
+
+const renderImportMapping = (target) => {
+    const t = importState.table;
+    if (!t) { $('import-mapping').innerHTML = ''; return; }
+    const options = (KM.FIELD_RULES[target] || KM.FIELD_RULES.koc).map(([f]) => f);
+    $('import-mapping').innerHTML = `<div class="text-xs text-gray-400 mb-2">Cột nhận diện được (dòng tiêu đề số ${t.headerRow + 1}). Sửa nếu tool nhận sai:</div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${t.labels.map((label, i) => label ? `
+            <label class="block text-xs"><span class="text-gray-400 truncate block" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
+            <select data-col="${i}" class="input-dark !py-1 text-xs import-field">
+                <option value="">— bỏ qua —</option>
+                ${options.map(f => `<option value="${f}" ${importState.fields[i] === f ? 'selected' : ''}>${escapeHtml(KM.FIELD_LABELS[f] || f)}</option>`).join('')}
+            </select></label>` : '').join('')}</div>`;
+    $('import-mapping').querySelectorAll('.import-field').forEach(sel => sel.addEventListener('change', () => {
+        const i = +sel.dataset.col;
+        if (sel.value) importState.fields = importState.fields.map((f, j) => (j !== i && f === sel.value ? null : f));
+        importState.fields[i] = sel.value || null;
+        analyzeImport({ keepFields: true });
+    }));
+};
+
+const importKocPaste = () => {
+    const r = analyzeImport({ keepFields: !!importState.fields });
+    if (!r) return showToast('Chưa có dữ liệu: chọn file hoặc dán bảng', 'error');
+    if (r.error || !r.records.length) return showToast(r.error || 'Không đọc được dòng nào', 'error');
+    const target = $('import-target').value;
+    if (target === 'blacklist') {
+        const existing = getBlacklistEntries();
+        const key = (e) => KM.handleFromLink(e.link) || normalizeName(e.name);
+        const index = new Map(existing.map((e, i) => [key(e), i]));
+        let added = 0, updated = 0;
+        r.records.forEach(e => {
+            const i = index.get(key(e));
+            if (i !== undefined) { existing[i] = { ...existing[i], ...Object.fromEntries(Object.entries(e).filter(([k, v]) => v && k !== 'id')) }; updated++; }
+            else { existing.push(e); index.set(key(e), existing.length - 1); added++; }
+        });
+        setBlacklistEntries(existing.slice());
+        renderBlacklistTable();
+        renderKocTable();
+        showToast(`Blacklist: thêm ${added}, cập nhật ${updated}`);
+    } else {
+        const { added, updated } = upsertKocs(r.records);
+        renderKocTable();
+        refreshBriefEmptyState();
+        showToast(`Đã nhập ${added} KOC mới, cập nhật ${updated} KOC`);
+    }
+    closeModal('paste');
+};
+
+// ================= BLACKLIST UI =================
+const renderBlacklistTable = () => {
+    const list = getBlacklistEntries();
+    $('blacklist-count').textContent = list.length;
+    $('blacklist-tbody').innerHTML = list.length ? list.map(e => `<tr>
+        <td>${escapeHtml(e.name)}</td>
+        <td class="text-xs">${e.link ? `<a href="${escapeHtml(e.link)}" target="_blank" rel="noopener noreferrer" class="hover:text-brand-400">${escapeHtml(e.link.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40))}</a>` : '-'}</td>
+        <td class="text-xs">${escapeHtml(e.project || '')}</td>
+        <td class="text-xs text-gray-400">${escapeHtml(e.reason || '')}</td>
+        <td class="text-right"><button onclick="deleteBlacklistEntry('${escapeHtml(e.id)}')" class="text-gray-500 hover:text-red-500" title="Xóa"><i class="fas fa-times"></i></button></td>
+    </tr>`).join('') : '<tr><td colspan="5" class="text-center text-gray-500 italic py-4">Chưa có KOL nào trong blacklist.</td></tr>';
+};
+
+const addBlacklistEntry = () => {
+    const name = $('bl-new-name').value.trim();
+    const link = $('bl-new-link').value.trim();
+    if (!name && !link) return showToast('Nhập tên hoặc link kênh', 'error');
+    const e = KM.normalizeBlacklistEntry({ name, link, reason: $('bl-new-reason').value.trim() });
+    setBlacklistEntries([...getBlacklistEntries(), e]);
+    ['bl-new-name', 'bl-new-link', 'bl-new-reason'].forEach(id => { $(id).value = ''; });
+    renderBlacklistTable();
+    renderKocTable();
+    checkBlacklist();
+    showToast(`Đã thêm "${name || link}" vào blacklist`);
+};
+
+const deleteBlacklistEntry = (id) => {
+    const e = getBlacklistEntries().find(x => x.id === id);
+    if (!e || !confirm(`Bỏ "${e.name || e.link}" khỏi blacklist?`)) return;
+    setBlacklistEntries(getBlacklistEntries().filter(x => x.id !== id));
+    renderBlacklistTable();
+    renderKocTable();
+    checkBlacklist();
 };
 
 const downloadText = (filename, text, type = 'text/csv;charset=utf-8') => {
@@ -396,8 +521,9 @@ BRIEF:
 };
 
 // ================= MATCHING =================
-const getPricing = () => ({ mode: $('ext-mode').value, pct: num($('ext-percent').value) });
-const matchCtx = () => ({ pricing: getPricing(), isBlacklisted: (n) => !!findBlacklisted(n) });
+// Same pricing settings as Proceed External; "manual" pricing falls back to the target margin for estimates
+const getPricing = () => { const p = getPricingSettings(); return { ...p, mode: p.mode === 'manual' ? 'margin' : p.mode }; };
+const matchCtx = () => ({ pricing: getPricing(), isBlacklisted: (k) => !!findBlacklisted(k.name, k.link) });
 
 const scoreColor = (s) => s >= 75 ? 'bg-green-500' : s >= 55 ? 'bg-yellow-500' : 'bg-red-500';
 const REASON_STYLE = { good: 'text-green-400 fa-check', warn: 'text-yellow-400 fa-triangle-exclamation', bad: 'text-red-400 fa-xmark', info: 'text-gray-500 fa-circle-info' };
@@ -566,24 +692,28 @@ const sendKocToPnl = (id) => {
     $('pnl-link').value = k.link || '';
     $('pnl-contact').value = k.contact || '';
     $('pnl-followers').value = k.followers || '';
-    if (['TikTok', 'FB', 'YT', 'Threads'].includes(k.platform)) $('pnl-platform').value = k.platform;
-    else showToast(`Nền tảng ${k.platform} chưa có hệ số backup, hãy chọn nền tảng tương ứng.`, 'info');
+    $('pnl-payment').value = k.paymentTerm || '';
+    if (KM.BACKUP_RATES[k.platform]) $('pnl-platform').value = k.platform;
+    else showToast(`Chưa rõ nền tảng của "${k.name}", hãy chọn nền tảng để tính cost backup.`, 'info');
     $('pnl-cost').value = k.rate ? formatMoney(k.rate) : '';
+    $('pnl-qty-booking').value = '1';
+    $('ext-qty').value = '1';
     $('pnl-tax-type').value = k.taxType || 'PIT';
     $('pnl-kpi').value = '';
-    $('pnl-scope').value = brief.deliverable || '';
+    $('pnl-kpi-eng').value = '';
+    $('pnl-scope').value = brief.deliverable || k.scope || '';
     $('blacklist-input').value = k.name;
     checkBlacklist();
     refreshCalculations();
     switchTab('internal');
-    showToast(`Đã điền "${k.name}" vào Proceed Internal. Nhập KPI để tính phí backup.`, 'info');
+    showToast(`Đã điền "${k.name}" vào Proceed Internal${k.lastQuote ? ` (giá bán lần trước: ${formatMoney(k.lastQuote)})` : ''}. Nhập KPI commit để tính cost backup.`, 'info');
 };
 
 // ================= INIT =================
 const refreshBriefEmptyState = () => $('brief-empty-db').classList.toggle('hidden', kocs.length > 0);
 
 window.onTabShown = (id) => {
-    if (id === 'kocs') renderKocTable();
+    if (id === 'kocs') { renderKocTable(); renderBlacklistTable(); }
     if (id === 'brief') { refreshBriefEmptyState(); if (lastRanking) runMatch({ silent: true }); }
 };
 
@@ -600,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderKocFilters();
 
     let t;
-    $('paste-text').addEventListener('input', () => { clearTimeout(t); t = setTimeout(previewPaste, 250); });
+    $('paste-text').addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { importState.workbook = null; $('import-sheet-wrap').classList.add('hidden'); analyzeImport(); }, 250); });
     document.querySelectorAll('.brief-field').forEach(el => el.addEventListener('change', saveBriefState));
     $('brief-raw').addEventListener('change', saveBriefState);
     ['koc-followers', 'koc-views'].forEach(id => $(id).addEventListener('blur', (e) => {

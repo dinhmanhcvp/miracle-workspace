@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const M = require('../assets/matcher.js');
 
 const koc = (o) => M.normalizeKoc({ platform: 'TikTok', followers: 200000, avgViews: 80000, er: 6, rate: 8000000, taxType: 'VAT', rating: 4, ...o });
-const pricing = { mode: 'margin', pct: 20 };
+const pricing = { mode: 'margin', pct: 20, discountPct: 0, cbPct: 0, roundTo: 0 };
 
 test('parseNumber handles Vietnamese shorthands', () => {
   assert.equal(M.parseNumber('10.000.000'), 10000000);
@@ -64,7 +64,7 @@ test('scoreKoc rewards matching KOC over mismatching one', () => {
 
 test('hard filters: blacklist, platform, over total budget', () => {
   const brief = { platforms: ['TikTok'], totalBudget: 9000000 };
-  const ctx = { pricing, isBlacklisted: (n) => n === 'Bad Guy' };
+  const ctx = { pricing, isBlacklisted: (k) => k.name === 'Bad Guy' };
   assert.match(M.scoreKoc(koc({ name: 'Bad Guy' }), brief, ctx).excluded, /blacklist/);
   assert.match(M.scoreKoc(koc({ name: 'X', platform: 'YT' }), brief, ctx).excluded, /Nền tảng/);
   assert.match(M.scoreKoc(koc({ name: 'Y' }), brief, ctx).excluded, /ngân sách/);
@@ -169,4 +169,90 @@ test('buildSearchTerms gives Vietnamese terms and hashtags', () => {
   assert.ok(r.hashtags.includes('reviewmypham'));
   assert.ok(r.terms.some(t => t.includes('sài gòn')));
   assert.deepEqual(M.buildSearchTerms({}).terms, []);
+});
+
+// Formula checks mirror the PRE PNL template structure (numbers are illustrative)
+test('calcPnl follows PRE PNL formulas (C, D, E, F, G, H, K, L)', () => {
+  const r = (x) => Math.round(x);
+  const a = M.calcPnl({ A: 3000000, B: 1, discountPct: 5, X: 1000000, O: 1, taxType: 'PIT', cbPct: 5, backup: 35000 });
+  assert.deepEqual([a.C, a.D, a.E, a.F, a.G, a.H, a.M, a.K].map(r), [150000, 2850000, 1000000, 111111, 142500, 15833, 35000, 1545556]);
+  assert.equal(a.L.toFixed(4), '0.5423');
+  const b = M.calcPnl({ A: 2500000, B: 2, discountPct: 5, X: 1000000, O: 2, taxType: 'VAT', cbPct: 5, backup: 35000, kpiEng: 1000 });
+  assert.deepEqual([b.C, b.D, b.E, b.F, b.G, b.H, b.K].map(r), [250000, 4750000, 2000000, 0, 237500, 26389, 2451111]);
+  assert.equal(r(b.CPE), 4750);
+  const c = M.calcPnl({ A: 1000000, B: 1, discountPct: 5, X: 500000, O: 1, taxType: 'HKD', cbPct: 5, backup: 0 });
+  assert.deepEqual([c.D, c.F, c.G, c.H, c.K].map(r), [950000, 35000, 47500, 5278, 362222]);
+  const d = M.calcPnl({ A: 5000000, X: 2000000, taxType: 'PIT', cbPct: 5, discountPct: 0 });
+  assert.equal(r(d.K), 2500000);
+  assert.equal(d.L, 0.5);
+});
+
+test('backup follows COMMIT KPI rates', () => {
+  assert.equal(M.calcBackup('TikTok', 200000, 0), 700000);
+  assert.equal(M.calcBackup('FB', 10000, 2000), 150000 + 70000);
+  assert.equal(M.calcBackup('Threads', 0, 400), 280000);
+  assert.equal(M.calcBackup('YT', 1000, 0), 35000);
+  assert.equal(M.calcBackup('Instagram', 1000, 0), 15000);
+});
+
+test('solvePrice reaches the target margin after all deductions', () => {
+  for (const tax of ['PIT', 'VAT', 'HKD']) {
+    const A = M.solvePrice({ X: 6000000, taxType: tax, pct: 35, discountPct: 5, cbPct: 5, roundTo: 0, platform: 'TikTok', kpiView: 20000 });
+    const p = M.calcPnl({ A, X: 6000000, taxType: tax, discountPct: 5, cbPct: 5, platform: 'TikTok', kpiView: 20000 });
+    assert.ok(Math.abs(p.L - 0.35) < 1e-6, `${tax}: ${p.L}`); // A is rounded to whole đồng
+  }
+  const rounded = M.solvePrice({ X: 2000000, taxType: 'PIT', pct: 35, discountPct: 0, cbPct: 5, roundTo: 100000 });
+  assert.equal(rounded % 100000, 0);
+  assert.ok(M.calcPnl({ A: rounded, X: 2000000, taxType: 'PIT', cbPct: 5 }).L >= 0.35);
+  assert.equal(M.solvePrice({ X: 1000000, mode: 'markup', pct: 50, discountPct: 0, cbPct: 0, roundTo: 0, taxType: 'VAT' }), 1500000);
+});
+
+// Layout mirrors an internal workfile (title rows, 2-level header, section rows, total row). All data is fictional.
+test('importTable reads workfile layout: title rows, 2-level header, sections', () => {
+  const rows = [
+    ['Workfile INT demo'],
+    [],
+    ['STT', 'KOLs', 'Link', 'Followers', 'Contact', 'Check', 'Hạng Mục Công Việc', 'Chi phí', 'Số lượng', 'Đơn vị', 'Thành tiền', 'Internal Cost TM', '', '', 'Thuế booking', '', '', '', 'Margin  35%', 'Thuế', 'Payment  Term', 'Note (internal)'],
+    ['', '', '', '', '', '', '', '', '', '', '', 'Cost Booking', 'Số lượng booking', 'Total Booking', '', 'Phí giới thiệu', 'Thuế phí giới thiệu', 'Lợi nhuận gộp', '', '', '', ''],
+    ['A. BOOKING ON TIKTOK'],
+    [1, 'Demo Creator One', 'https://www.tiktok.com/@demo_one', 1950, '0900000001', false, 'Sản xuất và đăng tải 01 video review', 5000000, 1, 'Video', 5000000, 2000000, 1, 2000000, 222222.22, 250000, 27777.78, 2500000, 0.5, 'PIT', '100% sau', ''],
+    [2, 'Demo Creator Two', 'https://www.tiktok.com/@demo_two', 107200, 'demo@example.com', false, 'Sản xuất video', 17000000, 1, 'Video', 17000000, 10000000, 1, 10000000, 0, 850000, 94444, 6055555, 0.356, 'VAT', '100% sau', 'Kèm youtube short'],
+    ['Tổng chi phí', '', '', '', '', '', '', '', '', '', 22000000],
+    ['B. GIA ĐÌNH'],
+    [1, 'Demo Family Channel', '', '70.2K', '', '', '', 9000000, 1, 'Video', 9000000, 5000000],
+  ];
+  const r = M.importTable(rows, { target: 'koc' });
+  assert.equal(r.error, undefined);
+  assert.equal(r.table.headerRow, 2);
+  assert.equal(r.records.length, 3);
+  const [a, b, c] = r.records;
+  assert.equal(a.name, 'Demo Creator One');
+  assert.equal(a.platform, 'TikTok');
+  assert.equal(a.rate, 2000000, 'Cost Booking -> giá nhập');
+  assert.equal(a.lastQuote, 5000000, 'Chi phí -> giá bán, not giá nhập');
+  assert.equal(a.taxType, 'PIT');
+  assert.equal(a.contact, '0900000001');
+  assert.equal(b.taxType, 'VAT');
+  assert.equal(b.notes, 'Kèm youtube short');
+  assert.equal(b.paymentTerm, '100% sau');
+  assert.equal(c.followers, 70200);
+  assert.ok(c.categories.includes('mombaby'), 'section "GIA ĐÌNH" -> category');
+});
+
+test('importTable reads PRE PNL header layout and a blacklist sheet', () => {
+  const pre = [
+    ['STT', 'Tên', 'Contact', 'Link kênh', 'Followers', 'Hạng mục công việc', 'External cost', '', '', '', '', 'Internal cost', '', '', '', '', '', '', '', '', 'Loại Thuế (Y)'],
+    ['', '', '', '', '', '', 'Chi phí (A)', 'Số lượng (B)', 'Đơn vị tính', 'Giảm giá (C)', 'Thành tiền (D)', 'Đơn giá  Booking (X)', 'Số lượng  booking (O)', 'Total Cost  (E)', 'Thuế Booking (F)', 'CB (G)', 'Thuế CB (H)', 'Cost Backup (M)', 'Lợi nhuận gộp (K)', 'Margin (L)', ''],
+    [1, 'Demo A', '0900000002', 'https://www.tiktok.com/@demo_a', '999K', 'Video review', 3000000, 1, 'Video', 150000, 2850000, 1000000, 1, 1000000, 111111, 142500, 15833, 35000, 1545555, 0.54, 'PIT'],
+  ];
+  const r = M.importTable(pre);
+  assert.equal(r.records.length, 1);
+  assert.equal(r.records[0].rate, 1000000);
+  assert.equal(r.records[0].lastQuote, 3000000);
+  assert.equal(r.records[0].followers, 999000);
+  assert.equal(r.records[0].taxType, 'PIT');
+  const bl = M.importTable([['N.o', 'Dự án', 'Name', 'Link kênh', 'Note'], [1, 'Demo project', 'Demo Bad', 'https://www.tiktok.com/@demo_bad', 'Không hợp tác'], [2, '', '', '', ''], [3]], { target: 'blacklist' });
+  assert.equal(bl.records.length, 1);
+  assert.deepEqual([bl.records[0].name, bl.records[0].project, bl.records[0].reason], ['Demo Bad', 'Demo project', 'Không hợp tác']);
+  assert.equal(M.handleFromLink('https://www.tiktok.com/@Demo_Bad?lang=vi'), 'tiktok:demo_bad');
 });

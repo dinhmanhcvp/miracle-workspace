@@ -55,12 +55,12 @@ const openPage = async (browser) => {
 
     // Import via paste (Excel TSV)
     await page.click('text=Kho KOC >> nth=0');
-    await page.click('text=Dán từ Excel/Sheets');
+    await page.click('text=Nhập từ Excel / Sheets / CSV');
     const tsv = 'Tên\tNền tảng\tFollowers\tView TB\tER (%)\tNgành\tGiới tính khán giả\tĐộ tuổi khán giả\tKhu vực\tGiá nhập\n' +
       'Paste KOC One\tTikTok\t150k\t60k\t7\tMỹ phẩm\tNữ\t18-24\tTP.HCM\t6tr\n' +
       '<img src=x onerror=window.__xss=1>\tTikTok\t20k\t5k\t3\tGame\tNam\t13-17\tHà Nội\t2tr\n';
     await page.fill('#paste-text', tsv);
-    await page.click('text=Nhập vào Kho KOC');
+    await page.click('#btn-import-confirm');
     await page.waitForTimeout(400);
     const afterPaste = await page.evaluate(() => ({ n: kocs.length, xss: !!window.__xss, img: !!document.querySelector('#koc-tbody img') }));
     check(afterPaste.n === 2, 'Paste import adds 2 KOCs', afterPaste.n);
@@ -224,6 +224,185 @@ const openPage = async (browser) => {
 
     check(!errors.length, 'No page errors (bookmarklet)', errors.join(' | '));
     await ctx.close();
+  }
+
+  // ---------- 4. Team sync through Google Sheets (Apps Script running on a fake Sheet) ----------
+  {
+    const fs = require('fs');
+    const { createBackend } = require('./fake-apps-script');
+    const root = path.resolve(__dirname, '..');
+    const backend = createBackend({ token: 'team-secret' });
+    const SYNC_URL = 'https://script.google.com/macros/s/TESTDEPLOY/exec';
+    const errors = [];
+    const serveTool = async (ctx) => {
+      await ctx.route('https://tool.test/**', (route) => {
+        const p = new URL(route.request().url()).pathname.replace(/^\//, '') || 'index.html';
+        const file = path.join(root, p);
+        if (!file.startsWith(root) || !fs.existsSync(file)) return route.fulfill({ status: 404, body: '' });
+        route.fulfill({ body: fs.readFileSync(file), contentType: p.endsWith('.js') ? 'text/javascript' : 'text/html; charset=utf-8' });
+      });
+      await ctx.route(SYNC_URL + '**', (route) => {
+        const req = route.request();
+        route.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: backend.http(req.method(), req.url(), req.postData()) });
+      });
+    };
+    const openMember = async (name) => {
+      const ctx = await browser.newContext();
+      await serveTool(ctx);
+      const page = await ctx.newPage();
+      page.on('pageerror', (e) => errors.push(`${name}: ${e.message}`));
+      page.on('dialog', (d) => d.accept());
+      await page.goto('https://tool.test/index.html');
+      await page.waitForFunction(() => window.Sync && typeof upsertKocs === 'function');
+      return { ctx, page };
+    };
+    const connect = async (page, user, token = 'team-secret') => {
+      await page.evaluate(({ url, token, user }) => {
+        openModal('settings');
+        document.getElementById('sync-url').value = url;
+        document.getElementById('sync-token').value = token;
+        document.getElementById('sync-user').value = user;
+        saveSettings();
+      }, { url: SYNC_URL, token, user });
+    };
+    const waitSynced = (page) => page.waitForFunction(() => /Đã đồng bộ|Lỗi/.test(document.getElementById('sync-status-text').textContent) && !/Đang/.test(document.getElementById('sync-status-text').textContent), null, { timeout: 8000 });
+    const syncNow = (page) => page.evaluate(() => Sync.syncNow());
+
+    // A has local data before connecting
+    const A = await openMember('A');
+    await A.page.evaluate(() => {
+      upsertKocs([KocMatcher.normalizeKoc({ name: 'Sync KOC One', platform: 'TikTok', link: 'https://www.tiktok.com/@sync_one', contact: '0900000001', followers: 120000, categories: ['beauty'], ages: ['18-24'], rate: 5000000 }),
+                  KocMatcher.normalizeKoc({ name: 'Sync KOC Two', platform: 'FB', followers: 50000, rate: 3000000 })]);
+      loadDemoKocs(); // demo data must never be uploaded
+      setBlacklistEntries([...getBlacklistEntries(), KocMatcher.normalizeBlacklistEntry({ name: 'Sync Bad', link: 'https://www.tiktok.com/@sync_bad', reason: 'test' })]);
+      document.getElementById('pnl-name').value = 'Sync KOC One'; document.getElementById('pnl-cost').value = '5000000'; document.getElementById('pnl-kpi').value = '10000';
+      refreshCalculations(); savePnlToDb();
+    });
+    check(await A.page.textContent('#sync-status-text') === 'Dữ liệu chỉ lưu trên trình duyệt này', 'Not connected: local-only status shown');
+    await connect(A.page, 'An');
+    await waitSynced(A.page);
+    let kocRows = backend.rowsOf('Kho KOC');
+    check(kocRows.length === 2 && kocRows.every(r => !/\[Mẫu\]/.test(r['Tên'])), 'First connect uploads local KOCs (not demo data)', kocRows.map(r => r['Tên']).join(', '));
+    check(kocRows[0]['Contact'] === '0900000001' && kocRows[0]['Độ tuổi khán giả'] === '18–24' && kocRows[0].updatedBy === 'An', 'Sheet columns are readable (contact text, age range, editor)', JSON.stringify(kocRows[0]));
+    check(backend.rowsOf('Blacklist').length === 1 && backend.rowsOf('Kho PNL').length === 1 && backend.rowsOf('Kho PNL')[0]['Thành tiền (D)'] > 0, 'Blacklist and PNL uploaded');
+
+    // B joins and receives everything
+    const B = await openMember('B');
+    await connect(B.page, 'Bình');
+    await waitSynced(B.page);
+    let bState = await B.page.evaluate(() => ({ kocs: kocs.map(k => k.name).sort(), bl: getBlacklistEntries().map(e => e.name), pnl: savedPNL.length, cats: kocs.find(k => k.name === 'Sync KOC One').categories, ages: kocs.find(k => k.name === 'Sync KOC One').ages }));
+    check(bState.kocs.join() === 'Sync KOC One,Sync KOC Two' && bState.bl.join() === 'Sync Bad' && bState.pnl === 1, 'Second member receives KOCs, blacklist, PNL', JSON.stringify(bState));
+    check(bState.cats.join() === 'beauty' && bState.ages.join() === '18-24', 'Categories and ages survive the round trip', JSON.stringify(bState));
+
+    // B edits, A receives
+    await B.page.evaluate(() => { const k = kocs.find(x => x.name === 'Sync KOC Two'); k.rate = 3500000; persistKocs(); });
+    await syncNow(B.page);
+    await syncNow(A.page);
+    check(await A.page.evaluate(() => kocs.find(x => x.name === 'Sync KOC Two').rate) === 3500000, 'Edit by B reaches A');
+
+    // A deletes, B loses it
+    await A.page.evaluate(() => { kocs = kocs.filter(x => x.name !== 'Sync KOC Two'); persistKocs(); });
+    await syncNow(A.page);
+    await syncNow(B.page);
+    check(!(await B.page.evaluate(() => kocs.some(x => x.name === 'Sync KOC Two'))), 'Deletion by A reaches B');
+    check(backend.rowsOf('Kho KOC').find(r => r['Tên'] === 'Sync KOC Two').deleted === true, 'Deleted row flagged in Sheet (not erased)');
+
+    // Someone edits / adds rows directly in the Sheet
+    const rowIdx = backend.sheets['Kho KOC'].data.findIndex(r => r[1] === 'Sync KOC One') + 1;
+    backend.userEdit('Kho KOC', rowIdx, 'Giá nhập', 6200000);
+    backend.userAppendRow('Kho KOC', { 'Tên': 'Typed In Sheet', 'Nền tảng': 'TikTok', 'Nhóm / Ngành': 'Ẩm thực / F&B', 'Giá nhập': 2000000 });
+    await syncNow(B.page);
+    bState = await B.page.evaluate(() => ({ rate: kocs.find(x => x.name === 'Sync KOC One').rate, typed: kocs.find(x => x.name === 'Typed In Sheet') }));
+    check(bState.rate === 6200000, 'Cell edited in the Sheet reaches the tool', bState.rate);
+    check(bState.typed && bState.typed.categories.join() === 'fnb' && bState.typed.platform === 'TikTok', 'Row typed in the Sheet becomes a KOC', JSON.stringify(bState.typed));
+
+    // Conflict: A edits after B; newest wins everywhere
+    await B.page.evaluate(() => { kocs.find(x => x.name === 'Sync KOC One').notes = 'note from B'; persistKocs(); });
+    await A.page.waitForTimeout(20);
+    await A.page.evaluate(() => { kocs.find(x => x.name === 'Sync KOC One').notes = 'note from A'; persistKocs(); });
+    await syncNow(B.page); await syncNow(A.page); await syncNow(B.page);
+    const notes = await Promise.all([A.page, B.page].map(p => p.evaluate(() => kocs.find(x => x.name === 'Sync KOC One').notes)));
+    check(notes[0] === 'note from A' && notes[1] === 'note from A', 'Concurrent edits: newest wins on both sides', JSON.stringify(notes));
+
+    // Reload keeps sync state, in-app tests never upload test data
+    await A.page.reload();
+    await A.page.waitForFunction(() => window.Sync && typeof upsertKocs === 'function');
+    await waitSynced(A.page);
+    const before = JSON.stringify(backend.sheets);
+    await A.page.evaluate(() => runAutomatedTests({ silent: true }));
+    await syncNow(A.page);
+    check(JSON.stringify(backend.sheets) === before, 'In-app test suite does not touch the team Sheet');
+
+    // Wrong token is reported
+    const C = await openMember('C');
+    await connect(C.page, 'Chi', 'wrong-token');
+    await waitSynced(C.page);
+    check(/Sai mã bí mật/.test(await C.page.textContent('#sync-status-text')), 'Wrong token shows a clear error');
+
+    check(!errors.length, 'No page errors (sync)', errors.join(' | '));
+    await Promise.all([A.ctx.close(), B.ctx.close(), C.ctx.close()]);
+  }
+
+  // ---------- 5. Import an .xlsx workbook laid out like the agency files (fictional data) ----------
+  {
+    let XLSX = null, xlsxSrc = null;
+    try { XLSX = require('xlsx'); xlsxSrc = require.resolve('xlsx/dist/xlsx.full.min.js'); } catch (e) { console.log('SKIP  .xlsx import test (npm package "xlsx" not installed)'); }
+    if (XLSX) {
+      const fs = require('fs');
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['QUY TRÌNH', 'Nội dung'], ['Nhận brief', 'abc']]), 'ASSIGN SCOPE');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+        ['Workfile INT demo'], [],
+        ['STT', 'KOLs', 'Link', 'Followers', 'Contact', 'Check', 'Hạng Mục Công Việc', 'Chi phí', 'Số lượng', 'Đơn vị', 'Thành tiền', 'Internal Cost TM', '', '', 'Thuế booking', '', '', '', 'Margin  35%', 'Thuế', 'Payment  Term'],
+        ['', '', '', '', '', '', '', '', '', '', '', 'Cost Booking', 'Số lượng booking', 'Total Booking', '', 'Phí giới thiệu', 'Thuế phí giới thiệu', 'Lợi nhuận gộp', '', '', ''],
+        ['A. BOOKING ON TIKTOK'],
+        [1, 'Xlsx Creator One', 'https://www.tiktok.com/@xlsx_one', 25000, '0900000003', false, '01 video review', 5000000, 1, 'Video', 5000000, 2000000, 1, 2000000, 222222, 250000, 27778, 2500000, 0.5, 'PIT', '100% sau'],
+        [2, 'Xlsx Creator Two', 'https://www.tiktok.com/@xlsx_two', 300000, 'demo@example.com', false, '01 video review', 12000000, 1, 'Video', 12000000, 7000000, 1, 7000000, 0, 600000, 66667, 4333333, 0.36, 'VAT', '50-50'],
+        ['B. HỌC SINH SINH VIÊN'],
+        [1, 'Xlsx Student', 'https://www.tiktok.com/@xlsx_student', 40000, '', false, '01 video', 4000000, 1, 'Video', 4000000, 2200000],
+      ]), 'NB LIST');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['N.o', 'Dự án', 'Name', 'Link kênh', 'Note'], [1, 'Demo', 'Xlsx Bad', 'https://www.tiktok.com/@xlsx_bad', 'Không hợp tác'], [2]]), 'BLACKLIST');
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+      const ctx = await browser.newContext();
+      const page = await ctx.newPage();
+      const errors = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      page.on('dialog', (d) => d.accept());
+      await ctx.route('**/xlsx.full.min.js', (route) => route.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(xlsxSrc) }));
+      await page.goto(url);
+      await page.waitForFunction(() => typeof openImportModal === 'function');
+      await page.evaluate(() => openImportModal('koc'));
+      await page.setInputFiles('#import-file-xlsx', { name: 'Workfile-demo.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer });
+      await page.waitForFunction(() => /Đọc được/.test(document.getElementById('paste-preview').textContent), null, { timeout: 8000 });
+      const picked = await page.inputValue('#import-sheet');
+      check(picked === 'NB LIST', 'Best sheet auto-selected in a multi-sheet workbook', picked);
+      const preview = await page.textContent('#paste-preview');
+      check(/Đọc được 3 KOC/.test(preview), 'Workbook rows detected (sections and 2-level header handled)', preview);
+      await page.click('#btn-import-confirm');
+      let st = await page.evaluate(() => kocs.map(k => ({ n: k.name, rate: k.rate, q: k.lastQuote, tax: k.taxType, pay: k.paymentTerm, cats: k.categories, plat: k.platform })));
+      const one = st.find(k => k.n === 'Xlsx Creator One');
+      check(st.length === 3 && one.rate === 2000000 && one.q === 5000000 && one.plat === 'TikTok' && one.pay === '100% sau', 'xlsx import: cost vs price columns, platform from section', JSON.stringify(one));
+      check(st.find(k => k.n === 'Xlsx Student').cats.includes('student'), 'xlsx import: persona section → group', JSON.stringify(st));
+
+      await page.evaluate(() => openImportModal('blacklist'));
+      await page.setInputFiles('#import-file-xlsx', { name: 'Quy-chuan-demo.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer });
+      await page.waitForFunction(() => /Đọc được/.test(document.getElementById('paste-preview').textContent), null, { timeout: 8000 });
+      check(await page.inputValue('#import-sheet') === 'BLACKLIST', 'Blacklist target picks the BLACKLIST sheet');
+      await page.click('#btn-import-confirm');
+      const bl = await page.evaluate(() => ({ list: getBlacklistEntries().map(e => [e.name, e.project, e.reason]), hit: !!findBlacklisted('Renamed', 'https://www.tiktok.com/@xlsx_bad') }));
+      check(bl.list.length === 1 && bl.list[0].join('|') === 'Xlsx Bad|Demo|Không hợp tác' && bl.hit, 'Blacklist imported with project/reason, matched by link', JSON.stringify(bl));
+
+      // Manual column override
+      await page.evaluate(() => openImportModal('koc'));
+      await page.fill('#paste-text', 'Tên\tGiá\nManual Map\t7000000');
+      await page.waitForTimeout(400);
+      await page.selectOption('#import-mapping select[data-col="1"]', 'rate');
+      await page.click('#btn-import-confirm');
+      check(await page.evaluate(() => kocs.find(k => k.name === 'Manual Map').rate) === 7000000, 'Column mapping can be corrected by hand');
+      check(!errors.length, 'No page errors (xlsx)', errors.join(' | '));
+      await ctx.close();
+    }
   }
 
   await browser.close();
