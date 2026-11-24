@@ -646,6 +646,9 @@
             demo: !!r.demo,
             analysis: r.analysis && typeof r.analysis === 'object' ? r.analysis : null,
             updatedAt: r.updatedAt || new Date().toISOString(),
+            ...(r.createdAt ? { createdAt: r.createdAt } : {}),
+            ...(r.createdBy !== undefined ? { createdBy: String(r.createdBy) } : {}),
+            ...(r.updatedBy ? { updatedBy: String(r.updatedBy) } : {}),
         };
     };
 
@@ -656,6 +659,8 @@
         project: String(r.project || '').trim(),
         reason: String(r.reason || '').trim(),
         updatedAt: r.updatedAt || new Date().toISOString(),
+        ...(r.createdAt ? { createdAt: r.createdAt } : {}),
+        ...(r.createdBy !== undefined ? { createdBy: String(r.createdBy) } : {}),
     });
 
     /** TikTok/YouTube handle from a profile link, for matching ("https://www.tiktok.com/@abc?x" -> "tiktok:abc"). */

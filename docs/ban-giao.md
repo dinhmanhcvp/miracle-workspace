@@ -38,6 +38,9 @@ node tools/license.js issue --agency "ABC Media" --days 365 --plan "Pro" --domai
 
 ## 3. Thiết lập cho agency (buổi onboarding ~1 giờ)
 
+Mô hình khuyên dùng: bán cho **trưởng nhóm booking**. Trưởng nhóm làm theo [huong-dan-truong-nhom.md](huong-dan-truong-nhom.md) (có thể bạn ngồi cùng 30 phút), sau đó gửi **link mời** cho thành viên; thành viên chỉ cần mở link, nhập tên.
+
+
 Thẻ **"Bắt đầu sử dụng"** trong tab Brief liệt kê đủ các bước:
 
 1. **Cấu hình agency**: tên, % thuế, % CB, thuế CB, hệ số cost backup theo COMMIT KPI của họ, margin mặc định, VAT / agency fee, **thứ tự cột** khớp file Excel của họ (PRE PNL, NB LIST, báo giá), mẫu tin nhắn, danh sách FOC. Xuất cấu hình ra JSON để lưu hồ sơ.

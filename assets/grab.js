@@ -240,7 +240,7 @@ const renderGrabAi = () => {
 
 const runGrabAi = async () => {
     if (!currentGrab) return;
-    if (!safeStorage.get(STORAGE.apiKey, '')) { currentGrab.aiState = 'nokey'; renderGrabModal(); return; }
+    if (!getApiKey()) { currentGrab.aiState = 'nokey'; renderGrabModal(); return; }
     const s = currentGrab.summary;
     const brief = readBriefForm();
     const existing = kocs.find(k => k.id === currentGrab.existingId);
@@ -349,7 +349,7 @@ const suggestSearchTerms = async (useAI) => {
     const brief = readBriefForm();
     const base = KM.buildSearchTerms(brief);
     if (!useAI) return renderSearchSuggestions(base, false);
-    if (!safeStorage.get(STORAGE.apiKey, '')) {
+    if (!getApiKey()) {
         showToast('Chưa có Gemini API Key, dùng gợi ý theo từ khóa.', 'info');
         return renderSearchSuggestions(base, false);
     }

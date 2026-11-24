@@ -100,6 +100,39 @@ const formatInputOnBlur = (e) => {
     if (!isNaN(n)) e.target.value = formatMoney(n);
 };
 
+// ---- Team helpers ----
+const currentUser = () => ((safeStorage.getJSON(STORAGE.sync, null) || {}).user || '').trim();
+/** Personal Gemini key, or the team key the lead set in Cấu hình agency. */
+const getApiKey = () => safeStorage.get(STORAGE.apiKey, '') || (typeof getAgencyConfig === 'function' ? (getAgencyConfig().teamApiKey || '') : '');
+/** Who created a record and when (shown in the team dashboard). */
+const stampNew = (r) => ({ ...r, createdAt: r.createdAt || new Date().toISOString(), createdBy: r.createdBy !== undefined ? r.createdBy : currentUser() });
+
+// Lead PIN: stops members from changing agency formulas or wiping shared data by mistake (not a security boundary)
+const LEAD_SESSION = 'miracle_lead_unlocked';
+const hashPin = (pin, salt) => {
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    const str = `${salt}:${pin}`;
+    for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+};
+const leadPinSet = () => typeof getAgencyConfig === 'function' && !!getAgencyConfig().leadPinHash;
+const isLeadUnlocked = () => {
+    if (!leadPinSet()) return true;
+    try { return sessionStorage.getItem(LEAD_SESSION) === getAgencyConfig().leadPinHash; } catch (e) { return false; }
+};
+/** Ask for the lead PIN when one is set. Returns true when the action may continue. */
+const requireLead = (what) => {
+    if (isLeadUnlocked()) return true;
+    const pin = window.prompt(`Chỉ trưởng nhóm được ${what}. Nhập mã trưởng nhóm:`);
+    if (pin === null) return false;
+    const cfg = getAgencyConfig();
+    if (hashPin(pin.trim(), cfg.leadPinSalt) !== cfg.leadPinHash) { showToast('Sai mã trưởng nhóm', 'error'); return false; }
+    try { sessionStorage.setItem(LEAD_SESSION, cfg.leadPinHash); } catch (e) { }
+    return true;
+};
+
 const normalizeName = (s) => String(s || '').normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
 
 // ================= STATE =================
@@ -335,7 +368,7 @@ const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // ================= AI =================
 const callGemini = async (promptText) => {
-    const key = safeStorage.get(STORAGE.apiKey, '');
+    const key = getApiKey();
     if (!key) throw new Error('NO_KEY');
     const model = safeStorage.get(STORAGE.model, DEFAULT_MODEL) || DEFAULT_MODEL;
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
@@ -562,9 +595,9 @@ const savePnlToDb = () => {
     const dup = savedPNL.findIndex(p => normalizeName(p.name) === normalizeName(data.name) && (p.link || '') === data.link);
     if (dup > -1) {
         if (!confirm(`"${data.name}" đã có trong kho. Ghi đè bản cũ?`)) return;
-        savedPNL[dup] = { ...data, id: savedPNL[dup].id };
+        savedPNL[dup] = { ...data, id: savedPNL[dup].id, createdAt: savedPNL[dup].createdAt, createdBy: savedPNL[dup].createdBy };
     } else {
-        savedPNL.push(upgradePnlRecord(data));
+        savedPNL.push(upgradePnlRecord(stampNew(data)));
     }
     persistPnl();
     renderDbTables();
@@ -646,7 +679,7 @@ const exportReport = () => copyTextToClipboard(getReportData().rawString);
 const saveReportToDb = () => {
     const r = getReportData();
     if (!r.client || !r.camp) return showToast('Cần nhập Client và Campaign', 'error');
-    savedReports.push(r);
+    savedReports.push(stampNew(r));
     persistReports();
     renderDbTables();
     showToast('Đã lưu báo cáo vào kho');
@@ -700,6 +733,41 @@ const renderDbTables = () => {
     }
     const badge = $('db-count');
     if (badge) badge.textContent = savedPNL.length + savedReports.length;
+    renderTeamStats();
+};
+
+/** Per-member activity: who added KOCs, built PNL lines, revenue, margin, reports (by created date). */
+const renderTeamStats = () => {
+    const body = $('team-tbody');
+    if (!body) return;
+    const period = $('team-period').value;
+    const now = new Date();
+    let from = null;
+    if (period === 'week') { from = new Date(now); from.setHours(0, 0, 0, 0); from.setDate(from.getDate() - ((from.getDay() + 6) % 7)); }
+    if (period === 'month') from = new Date(now.getFullYear(), now.getMonth(), 1);
+    const when = (r) => r.createdAt || r.savedAt || r.updatedAt || '';
+    const inPeriod = (r) => !from || (when(r) && new Date(when(r)) >= from);
+    const who = (r) => (r.createdBy || r.updatedBy || '').trim() || '(chưa đặt tên)';
+    const stats = new Map();
+    const get = (name) => { if (!stats.has(name)) stats.set(name, { kocs: 0, pnl: 0, D: 0, K: 0, reports: 0, last: '' }); return stats.get(name); };
+    const touch = (st, r) => { const t = r.updatedAt || when(r); if (t > st.last) st.last = t; };
+    const kocList = typeof kocs !== 'undefined' ? kocs.filter(k => !k.demo) : [];
+    kocList.filter(inPeriod).forEach(k => { const st = get(who(k)); st.kocs++; touch(st, k); });
+    savedPNL.map(upgradePnlRecord).filter(inPeriod).forEach(p => { const st = get(who(p)); st.pnl++; st.D += Number(p.D) || 0; st.K += Number(p.K) || 0; touch(st, p); });
+    savedReports.filter(inPeriod).forEach(r => { const st = get(who(r)); st.reports++; touch(st, r); });
+    const rows = [...stats.entries()].sort((a, b) => b[1].D - a[1].D || b[1].kocs - a[1].kocs);
+    body.innerHTML = rows.length ? rows.map(([name, st]) => `<tr>
+        <td class="font-medium">${escapeHtml(name)}</td>
+        <td>${st.kocs}</td><td>${st.pnl}</td>
+        <td class="whitespace-nowrap">${formatMoney(st.D)}</td>
+        <td class="whitespace-nowrap text-green-400">${formatMoney(st.K)}</td>
+        <td class="${st.D && st.K / st.D < 0.3 ? 'text-yellow-500' : ''}">${st.D ? fmtPct(st.K / st.D) : '-'}</td>
+        <td>${st.reports}</td>
+        <td class="text-xs text-gray-400 whitespace-nowrap">${st.last ? new Date(st.last).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+    </tr>`).join('') : '<tr><td colspan="8" class="text-center text-gray-500 italic py-4">Chưa có hoạt động trong khoảng thời gian này.</td></tr>';
+    $('team-note').textContent = (window.Sync && Sync.isConfigured())
+        ? 'Số liệu của cả team (đồng bộ qua Google Sheet). Thành viên được ghi theo tên nhập khi tham gia team.'
+        : 'Chưa kết nối Google Sheets: bảng chỉ có số liệu trên máy này. Kết nối và mời thành viên để xem hiệu quả cả team.';
 };
 
 const deleteRow = (type, index) => {
@@ -727,6 +795,7 @@ const copyBulkReports = () => {
 };
 
 const clearDb = (type) => {
+    if (!requireLead('xóa toàn bộ dữ liệu của team')) return;
     if (!confirm(`Xóa TOÀN BỘ ${type === 'pnl' ? 'PNL' : 'báo cáo tuần'} đã lưu? Không thể hoàn tác (nên Sao lưu trước).`)) return;
     if (type === 'pnl') { savedPNL = []; safeStorage.remove(STORAGE.pnl); }
     else { savedReports = []; safeStorage.remove(STORAGE.reports); }
@@ -799,7 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (fromBookmarklet) {
         setTimeout(() => showToast(checkBlacklist() ? '⚠️ KOC này nằm trong BLACKLIST!' : 'Đã tải dữ liệu KOC từ Bookmarklet', checkBlacklist() ? 'error' : 'success'), 400);
     }
-    if (!safeStorage.get(STORAGE.apiKey, '')) {
+    if (!getApiKey()) {
         setTimeout(() => showToast('Chưa có Gemini API Key. Các nút AI sẽ dùng văn mẫu. Thêm key trong Cài đặt.', 'info'), 800);
     }
 });

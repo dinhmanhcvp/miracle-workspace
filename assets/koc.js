@@ -66,7 +66,7 @@ const upsertKocs = (list) => {
             kocs[i] = merged;
             updated++;
         } else {
-            kocs.push(k);
+            kocs.push(stampNew(k));
             index.set(kocKey(k), kocs.length - 1);
             added++;
         }
@@ -176,6 +176,7 @@ const deleteKoc = (id) => {
 };
 
 const clearKocs = () => {
+    if (kocs.some(k => !k.demo) && !requireLead('xóa Kho KOC của team')) return;
     const demo = kocs.filter(k => k.demo).length;
     if (!kocs.length) return showToast('Kho KOC đang trống', 'info');
     if (demo && demo < kocs.length && confirm(`Chỉ xóa ${demo} KOC mẫu?\n(OK = chỉ xóa dữ liệu mẫu, Cancel = chọn xóa tất cả)`)) {
@@ -337,7 +338,7 @@ const addBlacklistEntry = () => {
     const link = $('bl-new-link').value.trim();
     if (!name && !link) return showToast('Nhập tên hoặc link kênh', 'error');
     const e = KM.normalizeBlacklistEntry({ name, link, reason: $('bl-new-reason').value.trim() });
-    setBlacklistEntries([...getBlacklistEntries(), e]);
+    setBlacklistEntries([...getBlacklistEntries(), stampNew(e)]);
     ['bl-new-name', 'bl-new-link', 'bl-new-reason'].forEach(id => { $(id).value = ''; });
     renderBlacklistTable();
     renderKocTable();
@@ -474,7 +475,7 @@ const parseBriefQuick = () => {
 const parseBriefWithAI = async () => {
     const raw = $('brief-raw').value.trim();
     if (!raw) return showToast('Hãy dán nội dung brief trước', 'error');
-    if (!safeStorage.get(STORAGE.apiKey, '')) {
+    if (!getApiKey()) {
         showToast('Chưa có Gemini API Key, dùng chế độ đọc nhanh.', 'info');
         return parseBriefQuick();
     }
@@ -714,6 +715,7 @@ const refreshBriefEmptyState = () => $('brief-empty-db').classList.toggle('hidde
 
 window.onTabShown = (id) => {
     if (id === 'kocs') { renderKocTable(); renderBlacklistTable(); }
+    if (id === 'db') renderTeamStats();
     if (id === 'brief') { refreshBriefEmptyState(); renderOnboarding(); if (lastRanking) runMatch({ silent: true }); }
 };
 

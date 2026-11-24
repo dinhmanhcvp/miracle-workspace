@@ -662,6 +662,24 @@ Ngày on-air: []</textarea>
                     </div>
                 </div>
 
+                <div class="card" id="team-card">
+                    <div class="flex flex-wrap gap-3 justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-white"><i class="fas fa-users text-pink-400 mr-2"></i>Hiệu quả team</h3>
+                        <select id="team-period" class="input-dark !w-44 text-sm" onchange="renderTeamStats()">
+                            <option value="week">Tuần này</option>
+                            <option value="month">Tháng này</option>
+                            <option value="all">Tất cả</option>
+                        </select>
+                    </div>
+                    <div class="overflow-x-auto rounded-lg border border-gray-800">
+                        <table class="data-table">
+                            <thead><tr><th>Thành viên</th><th>KOC mới</th><th>Dòng PNL</th><th>Σ Thành tiền (D)</th><th>Σ Lợi nhuận (K)</th><th>Margin</th><th>Báo cáo</th><th>Hoạt động gần nhất</th></tr></thead>
+                            <tbody id="team-tbody"></tbody>
+                        </table>
+                    </div>
+                    <p id="team-note" class="text-xs text-gray-500 mt-2"></p>
+                </div>
+
                 <div class="card">
                     <div class="flex flex-wrap gap-3 justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold text-white"><i
@@ -753,6 +771,22 @@ Ngày on-air: []</textarea>
 
         </div>
     </main>
+
+    <!-- Join team (opened from an invite link) -->
+    <div id="join-modal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-300 p-4">
+        <div class="bg-dark-800 border border-gray-700 rounded-xl max-w-md w-full p-6 shadow-2xl scale-95 transition-transform duration-300 transform" id="join-panel">
+            <h2 class="text-xl font-semibold mb-2 text-white"><i class="fas fa-user-plus text-brand-500 mr-2"></i>Tham gia team <span id="join-agency"></span></h2>
+            <p class="text-sm text-gray-400 mb-4">Bạn được mời dùng chung Kho KOC, Blacklist, Kho PNL và cấu hình của team. Dữ liệu đang có trên máy này (nếu có) sẽ được đưa lên kho chung.</p>
+            <label class="label-dark" for="join-name">Tên của bạn (hiện trong bảng hiệu quả team)</label>
+            <input type="text" id="join-name" class="input-dark mb-2" placeholder="VD: Hân" onkeydown="if(event.key==='Enter')Sync.joinTeam()">
+            <p id="join-warning" class="text-xs text-yellow-400 mb-2"></p>
+            <div class="flex justify-end gap-3 mt-4">
+                <button onclick="closeModal('join')" class="btn-secondary">Để sau</button>
+                <button onclick="Sync.joinTeam()" id="btn-join" class="btn-primary"><i class="fas fa-right-to-bracket"></i> Tham gia</button>
+            </div>
+        </div>
+    </div>
 
     <!-- License lock (only when licensing is enabled and there is no valid license after the trial) -->
     <div id="license-lock" class="hidden fixed inset-0 z-[55] bg-black/90 items-center justify-center p-4">

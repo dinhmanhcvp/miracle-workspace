@@ -54,6 +54,9 @@ const DEFAULT_AGENCY_CONFIG = () => ({
     id: 'agency-config',
     agencyName: '',
     licenseKey: '',
+    teamApiKey: '',
+    leadPinHash: '',
+    leadPinSalt: '',
     tax: { ...KocMatcher.DEFAULT_RATES.tax },
     cbTaxPct: KocMatcher.DEFAULT_RATES.cbTaxPct,
     backup: JSON.parse(JSON.stringify(KocMatcher.DEFAULT_RATES.backup)),
@@ -162,14 +165,20 @@ const renderConfigTab = () => {
     const lic = window.License ? License.status() : { enabled: false };
     const platforms = Object.keys(cfg.backup);
     const fmtKeys = Object.keys(cfg.formats);
+    const locked = !isLeadUnlocked();
+    const synced = !!(window.Sync && Sync.isConfigured());
     $('tab-config').innerHTML = `
         <div class="mb-6 flex flex-wrap justify-between items-end gap-3">
             <div>
                 <h2 class="text-3xl font-bold text-white mb-2">Cấu hình agency</h2>
                 <p class="text-gray-400">Áp dụng cho cả team (đồng bộ qua Google Sheets nếu đã kết nối). Cài đặt cá nhân như API key nằm ở nút Cài đặt.</p>
             </div>
-            <button onclick="saveConfigFromForm()" class="btn-success"><i class="fas fa-save"></i> Lưu cấu hình</button>
+            ${locked ? '' : '<button onclick="saveConfigFromForm()" class="btn-success"><i class="fas fa-save"></i> Lưu cấu hình</button>'}
         </div>
+        ${locked ? `<div class="p-4 rounded-xl bg-blue-900/20 border border-blue-700/40 text-blue-200 text-sm flex flex-wrap gap-3 items-center justify-between">
+            <span><i class="fas fa-lock mr-2"></i>Cấu hình do trưởng nhóm quản lý. Bạn đang xem ở chế độ chỉ đọc.</span>
+            <button onclick="if (requireLead('sửa cấu hình')) renderConfigTab()" class="btn-secondary text-xs"><i class="fas fa-unlock"></i> Mở khóa (trưởng nhóm)</button></div>` : ''}
+        <fieldset ${locked ? 'disabled' : ''} class="space-y-6 min-w-0">
 
         <div class="card space-y-4">
             <h3 class="text-lg font-semibold text-white"><i class="fas fa-building text-blue-400 mr-2"></i>Agency & bản quyền</h3>
@@ -181,6 +190,28 @@ const renderConfigTab = () => {
             ${lic.enabled ? `<div><label class="label-dark" for="cfg-license">Mã bản quyền</label>
                 <textarea id="cfg-license" class="input-dark h-20 font-mono text-xs" placeholder="Dán mã bản quyền nhà cung cấp gửi">${escapeHtml(cfg.licenseKey)}</textarea>
                 <button onclick="License.activate(document.getElementById('cfg-license').value)" class="btn-primary text-sm mt-2"><i class="fas fa-unlock"></i> Kích hoạt</button></div>` : ''}
+        </div>
+
+        <div class="card space-y-4">
+            <h3 class="text-lg font-semibold text-white"><i class="fas fa-users text-pink-400 mr-2"></i>Team & phân quyền</h3>
+            <div>
+                <span class="label-dark">Mời thành viên</span>
+                ${synced ? `<div class="flex flex-wrap gap-2"><button type="button" onclick="showInviteLink()" class="btn-primary text-sm"><i class="fas fa-link"></i> Tạo link mời</button></div>
+                    <div id="invite-box" class="hidden mt-2"><input type="text" id="invite-link" class="input-dark text-xs font-mono" readonly>
+                    <div class="flex gap-2 mt-2"><button type="button" onclick="copyInput('invite-link')" class="btn-secondary text-xs"><i class="fas fa-copy"></i> Copy link</button></div>
+                    <p class="text-xs text-yellow-400 mt-1">Ai có link này đều đọc/ghi được dữ liệu của team. Chỉ gửi qua kênh nội bộ; khi có người nghỉ, đổi mã bí mật (SYNC_TOKEN) rồi tạo link mới.</p></div>`
+                    : '<p class="text-sm text-gray-400">Kết nối Google Sheets trước (nút <b>Cài đặt</b> › Đồng bộ) rồi quay lại đây để tạo link mời. Thành viên chỉ cần mở link và nhập tên.</p>'}
+            </div>
+            <div><label class="label-dark" for="cfg-team-key">Gemini API key dùng chung cho team (không bắt buộc)</label>
+                <input type="password" id="cfg-team-key" class="input-dark" autocomplete="off" value="${escapeHtml(cfg.teamApiKey)}" placeholder="Để trống nếu mỗi người tự dùng key riêng">
+                <p class="text-xs text-gray-500 mt-1">Thành viên chưa có key riêng sẽ dùng key này. Key được lưu trong Google Sheet của team (cột ẩn), người xem được Sheet sẽ thấy key: nên đặt giới hạn chi phí trong Google AI Studio.</p></div>
+            <div><span class="label-dark">Mã trưởng nhóm</span>
+                <p class="text-xs text-gray-500 mb-2">Khi đặt mã, chỉ người có mã mới sửa được cấu hình và xóa toàn bộ Kho KOC / Kho PNL / Báo cáo (tránh thành viên xóa nhầm dữ liệu chung). Đây là chống nhầm lẫn, không phải bảo mật.</p>
+                <div class="flex flex-wrap gap-2 items-center">
+                    <input type="password" id="cfg-lead-pin" class="input-dark !w-48" placeholder="${cfg.leadPinHash ? 'Mã mới (đổi mã)' : 'Đặt mã (ít nhất 4 ký tự)'}" autocomplete="new-password">
+                    <button type="button" onclick="setLeadPin()" class="btn-secondary text-sm">${cfg.leadPinHash ? 'Đổi mã' : 'Đặt mã'}</button>
+                    ${cfg.leadPinHash ? '<button type="button" onclick="removeLeadPin()" class="btn-secondary text-sm">Gỡ mã</button><span class="text-xs text-green-400"><i class="fas fa-lock"></i> Đang bật</span>' : ''}
+                </div></div>
         </div>
 
         <div class="card space-y-4">
@@ -236,7 +267,8 @@ const renderConfigTab = () => {
             <button onclick="resetAgencyConfig()" class="btn-secondary text-sm"><i class="fas fa-rotate-left"></i> Khôi phục mặc định</button>
             <div class="flex-1"></div>
             <button onclick="saveConfigFromForm()" class="btn-success"><i class="fas fa-save"></i> Lưu cấu hình</button>
-        </div>`;
+        </div>
+        </fieldset>`;
 };
 
 /** Read the config form. Returns { cfg } or { error }. */
@@ -245,6 +277,7 @@ const readConfigForm = () => {
     const cfg = JSON.parse(JSON.stringify(cur));
     cfg.agencyName = $('cfg-agency').value.trim();
     if ($('cfg-license')) cfg.licenseKey = $('cfg-license').value.trim();
+    cfg.teamApiKey = $('cfg-team-key').value.trim();
     ['PIT', 'HKD', 'VAT'].forEach(t => { cfg.tax[t] = readPct(`cfg-tax-${t}`, cur.tax[t]); });
     cfg.cbTaxPct = readPct('cfg-cbtax', cur.cbTaxPct);
     Object.keys(cfg.backup).forEach(p => {
@@ -274,6 +307,7 @@ const readConfigForm = () => {
 };
 
 const saveConfigFromForm = () => {
+    if (!requireLead('sửa cấu hình')) return;
     const { cfg, error } = readConfigForm();
     if (error) return showToast(error, 'error');
     const pricingChanged = JSON.stringify(cfg.pricing) !== JSON.stringify(getAgencyConfig().pricing);
@@ -284,7 +318,7 @@ const saveConfigFromForm = () => {
 };
 
 const exportAgencyConfig = () => {
-    const { licenseKey, ...rest } = getAgencyConfig();
+    const { licenseKey, teamApiKey, leadPinHash, leadPinSalt, ...rest } = getAgencyConfig();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify({ app: 'koc-booking-workspace', kind: 'agency-config', config: rest }, null, 2)], { type: 'application/json' }));
     a.download = 'cau-hinh-agency.json';
@@ -295,6 +329,7 @@ const exportAgencyConfig = () => {
 
 const importAgencyConfig = (event) => {
     const file = event.target.files[0];
+    if (file && !requireLead('nhập cấu hình')) { event.target.value = ''; return; }
     event.target.value = '';
     if (!file) return;
     file.text().then(text => {
@@ -302,16 +337,18 @@ const importAgencyConfig = (event) => {
         const incoming = data.config || data;
         if (!incoming || typeof incoming !== 'object' || !incoming.formats) throw new Error('File không phải cấu hình agency');
         if (!confirm('Thay cấu hình hiện tại bằng cấu hình trong file? (Mã bản quyền giữ nguyên)')) return;
-        setAgencyConfig({ ...incoming, licenseKey: getAgencyConfig().licenseKey });
+        const cur = getAgencyConfig();
+        setAgencyConfig({ ...incoming, licenseKey: cur.licenseKey, teamApiKey: cur.teamApiKey, leadPinHash: cur.leadPinHash, leadPinSalt: cur.leadPinSalt });
         renderConfigTab();
         showToast('Đã nhập cấu hình');
     }).catch(err => showToast('Không đọc được file: ' + err.message, 'error'));
 };
 
 const resetAgencyConfig = () => {
+    if (!requireLead('khôi phục cấu hình')) return;
     if (!confirm('Khôi phục công thức, format, mẫu tin nhắn về mặc định? (Tên agency và bản quyền giữ nguyên)')) return;
     const cur = getAgencyConfig();
-    setAgencyConfig({ ...DEFAULT_AGENCY_CONFIG(), agencyName: cur.agencyName, licenseKey: cur.licenseKey });
+    setAgencyConfig({ ...DEFAULT_AGENCY_CONFIG(), agencyName: cur.agencyName, licenseKey: cur.licenseKey, teamApiKey: cur.teamApiKey, leadPinHash: cur.leadPinHash, leadPinSalt: cur.leadPinSalt });
     safeStorage.remove(STORAGE.pricing);
     loadPricingSettings();
     refreshCalculations();
@@ -330,7 +367,7 @@ const renderOnboarding = () => {
         ['Nạp Kho KOC từ file NB LIST / PRE PNL / Excel', typeof kocs !== 'undefined' && kocs.some(k => !k.demo), "openImportModal('koc')", 'Nhập file'],
         ['Nhập Blacklist của agency', getBlacklistEntries().length > 0, "openImportModal('blacklist')", 'Nhập blacklist'],
         ['Kết nối Google Sheets để cả team dùng chung (khuyên dùng)', !!(window.Sync && Sync.isConfigured()), "openModal('settings')", 'Kết nối'],
-        ['Thêm Gemini API key để dùng AI (không bắt buộc)', !!safeStorage.get(STORAGE.apiKey, ''), "openModal('settings')", 'Thêm key'],
+        ['Thêm Gemini API key để dùng AI (không bắt buộc)', !!getApiKey(), "openModal('settings')", 'Thêm key'],
         ['Cài bookmark "Phân tích KOC" để soi kênh TikTok', !!safeStorage.get(BOOKMARKLET_SEEN, ''), "safeStorage.set('" + BOOKMARKLET_SEEN + "','1');openModal('bookmarklet');renderOnboarding()", 'Cài đặt'],
     ];
     const done = steps.filter(s => s[1]).length;
@@ -350,3 +387,30 @@ const renderOnboarding = () => {
     </div>`;
 };
 document.addEventListener('DOMContentLoaded', () => setTimeout(renderOnboarding, 0));
+
+// ================= TEAM: lead PIN, invite link =================
+const setLeadPin = () => {
+    if (!requireLead('đổi mã trưởng nhóm')) return;
+    const pin = $('cfg-lead-pin').value.trim();
+    if (pin.length < 4) return showToast('Mã trưởng nhóm cần ít nhất 4 ký tự', 'error');
+    const salt = Math.random().toString(36).slice(2, 10);
+    const hash = hashPin(pin, salt);
+    setAgencyConfig({ ...getAgencyConfig(), leadPinHash: hash, leadPinSalt: salt });
+    try { sessionStorage.setItem(LEAD_SESSION, hash); } catch (e) { }
+    renderConfigTab();
+    showToast('Đã đặt mã trưởng nhóm. Hãy ghi nhớ mã này.');
+};
+
+const removeLeadPin = () => {
+    if (!requireLead('gỡ mã trưởng nhóm')) return;
+    if (!confirm('Gỡ mã trưởng nhóm? Mọi thành viên sẽ sửa được cấu hình và xóa dữ liệu chung.')) return;
+    setAgencyConfig({ ...getAgencyConfig(), leadPinHash: '', leadPinSalt: '' });
+    renderConfigTab();
+};
+
+const showInviteLink = () => {
+    const link = Sync.buildInviteLink();
+    if (!link) return showToast('Chưa kết nối Google Sheets', 'error');
+    $('invite-link').value = link;
+    $('invite-box').classList.remove('hidden');
+};

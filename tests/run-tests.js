@@ -497,6 +497,102 @@ const openPage = async (browser) => {
     await c2.close();
   }
 
+  // ---------- 7. Team lead workflow: invite link, shared AI key, lead PIN, team dashboard ----------
+  {
+    const fs = require('fs');
+    const { createBackend } = require('./fake-apps-script');
+    const root = path.resolve(__dirname, '..');
+    const backend = createBackend({ token: 'lead-secret' });
+    const SYNC_URL = 'https://script.google.com/macros/s/TEAMDEPLOY/exec';
+    const errors = [];
+    let geminiKeyUsed = '';
+    const openCtx = async (name, promptAnswers = []) => {
+      const ctx = await browser.newContext();
+      await ctx.route('https://tool.test/**', (route) => {
+        const p = new URL(route.request().url()).pathname.replace(/^\//, '') || 'index.html';
+        const file = path.join(root, p);
+        if (!file.startsWith(root) || !fs.existsSync(file)) return route.fulfill({ status: 404, body: '' });
+        route.fulfill({ body: fs.readFileSync(file), contentType: p.endsWith('.js') ? 'text/javascript' : p.endsWith('.css') ? 'text/css' : 'text/html; charset=utf-8' });
+      });
+      await ctx.route(SYNC_URL + '**', (route) => { const r = route.request(); route.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: backend.http(r.method(), r.url(), r.postData()) }); });
+      await ctx.route('https://generativelanguage.googleapis.com/**', (route) => {
+        geminiKeyUsed = route.request().headers()['x-goog-api-key'] || '';
+        route.fulfill({ contentType: 'application/json', body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"categories":["beauty"]}' }] } }] }) });
+      });
+      const page = await ctx.newPage();
+      page.on('pageerror', (e) => errors.push(`${name}: ${e.message}`));
+      page.on('dialog', (d) => d.type() === 'prompt' ? d.accept(promptAnswers.shift() ?? '') : d.accept());
+      return { ctx, page, promptAnswers };
+    };
+    const ready = (page) => page.waitForFunction(() => window.Sync && typeof renderTeamStats === 'function');
+    const synced = (page) => page.waitForFunction(() => /Đã đồng bộ/.test(document.getElementById('sync-status-text').textContent), null, { timeout: 8000 });
+
+    // Lead sets everything up
+    const L = await openCtx('Lead');
+    await L.page.goto('https://tool.test/index.html');
+    await ready(L.page);
+    await L.page.evaluate((url) => {
+      setAgencyConfig({ ...getAgencyConfig(), agencyName: 'Team ABC', teamApiKey: 'TEAMKEY' });
+      openModal('settings');
+      $('sync-url').value = url; $('sync-token').value = 'lead-secret'; $('sync-user').value = 'Trưởng nhóm';
+      saveSettings();
+    }, SYNC_URL);
+    await synced(L.page);
+    await L.page.click('#btn-tab-config');
+    await L.page.fill('#cfg-lead-pin', '2468');
+    await L.page.click('#tab-config button:has-text("Đặt mã")');
+    await L.page.evaluate(() => {
+      upsertKocs([KocMatcher.normalizeKoc({ name: 'Team KOC', platform: 'TikTok', rate: 3000000, categories: ['beauty'] })]);
+      $('pnl-name').value = 'Lead Deal'; $('pnl-cost').value = '4000000'; $('pnl-kpi').value = '10000'; refreshCalculations(); savePnlToDb();
+    });
+    await L.page.evaluate(() => Sync.syncNow());
+    await L.page.click('#btn-tab-config');
+    await L.page.click('text=Tạo link mời');
+    const invite = await L.page.inputValue('#invite-link');
+    check(/^https:\/\/tool\.test\/index\.html#join=[A-Za-z0-9_-]+$/.test(invite) && !invite.includes('lead-secret'), 'Invite link generated (token not readable in plain text)', invite.slice(0, 60));
+
+    // Member joins with the link
+    const M = await openCtx('Member', ['0000', '2468']);
+    await M.page.goto(invite);
+    await ready(M.page);
+    await M.page.waitForSelector('#join-modal.flex', { timeout: 5000 });
+    check(await M.page.textContent('#join-agency') === 'Team ABC', 'Join dialog shows the team name');
+    check(!(await M.page.evaluate(() => location.hash.includes('join='))), 'Invite data removed from the address bar');
+    await M.page.fill('#join-name', 'Mai');
+    await M.page.click('#btn-join');
+    await synced(M.page);
+    const mState = await M.page.evaluate(() => ({ agency: rawAgencyName(), kocs: kocs.map(k => k.name), pnl: savedPNL.length, user: currentUser(), key: getApiKey(), personal: localStorage.getItem('gemini_api_key_v2') }));
+    check(mState.agency === 'Team ABC' && mState.kocs.includes('Team KOC') && mState.pnl === 1 && mState.user === 'Mai', 'Member joined: config, KOCs and PNL received', JSON.stringify(mState));
+    check(mState.key === 'TEAMKEY' && !mState.personal, 'Member without own key uses the team key');
+    await M.page.evaluate(() => { $('brief-raw').value = 'Cần KOC TikTok review skincare'; return parseBriefWithAI(); });
+    check(geminiKeyUsed === 'TEAMKEY', 'AI calls from the member use the team key', geminiKeyUsed);
+
+    // Lead PIN protections
+    await M.page.click('#btn-tab-config');
+    check(await M.page.evaluate(() => document.querySelector('#tab-config fieldset').disabled) && await M.page.isVisible('text=chế độ chỉ đọc'), 'Agency config is read-only for members');
+    await M.page.evaluate(() => clearKocs());
+    check(await M.page.evaluate(() => kocs.some(k => k.name === 'Team KOC')), 'Wrong lead PIN: shared KOC database not wiped');
+    await M.page.evaluate(() => { if (requireLead('test')) renderConfigTab(); });
+    check(!(await M.page.evaluate(() => document.querySelector('#tab-config fieldset').disabled)), 'Correct lead PIN unlocks config');
+
+    // Member works, lead sees team stats
+    await M.page.evaluate(() => {
+      $('pnl-name').value = 'Mai Deal 1'; $('pnl-cost').value = '2000000'; $('pnl-kpi').value = '5000'; refreshCalculations(); savePnlToDb();
+      $('pnl-name').value = 'Mai Deal 2'; $('pnl-cost').value = '3000000'; refreshCalculations(); savePnlToDb();
+      upsertKocs([KocMatcher.normalizeKoc({ name: 'Mai KOC', platform: 'TikTok' })]);
+      $('rep-client').value = 'Client'; $('rep-campaign').value = 'Camp'; saveReportToDb();
+    });
+    await M.page.evaluate(() => Sync.syncNow());
+    await L.page.evaluate(() => Sync.syncNow());
+    await L.page.click('#btn-tab-db');
+    await L.page.selectOption('#team-period', 'week');
+    const rows = await L.page.$$eval('#team-tbody tr', trs => trs.map(tr => [...tr.children].map(td => td.textContent.trim())));
+    const mai = rows.find(r => r[0] === 'Mai'), lead = rows.find(r => r[0] === 'Trưởng nhóm');
+    check(mai && lead && mai[1] === '1' && mai[2] === '2' && mai[6] === '1' && lead[2] === '1' && lead[1] === '1', 'Team dashboard shows each member\'s KOCs, PNL lines and reports', JSON.stringify(rows));
+    check(!errors.length, 'No page errors (team)', errors.join(' | '));
+    await Promise.all([L.ctx.close(), M.ctx.close()]);
+  }
+
   await browser.close();
   console.log(failures ? `\n${failures} FAILED` : '\nAll browser tests passed');
   process.exit(failures ? 1 : 0);

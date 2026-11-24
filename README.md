@@ -31,6 +31,14 @@ Chạy hoàn toàn trên trình duyệt (HTML/CSS/JS tĩnh), không cần máy c
 | M | Cost backup | TikTok View × 3,5 · FB View × 15 + Engagement × 35 · YT View × 35 · IG View × 15 · Threads Engagement × 700 |
 | K, L | Lợi nhuận gộp, Margin | K = D − E − F − G − H − M · L = K / D |
 
+## Mô hình sử dụng: trưởng nhóm thiết lập, cả team dùng
+
+1. Trưởng nhóm thiết lập một lần (~30 phút): bản quyền, cấu hình agency, Google Sheet của team, nhập dữ liệu, API key chung (tùy chọn), mã trưởng nhóm.
+2. Trưởng nhóm gửi **link mời**; thành viên mở link, nhập tên là dùng chung dữ liệu.
+3. Trưởng nhóm theo dõi **Hiệu quả team** (KOC mới, PNL, thành tiền, lợi nhuận, margin, báo cáo theo từng người).
+
+Chi tiết: [docs/huong-dan-truong-nhom.md](docs/huong-dan-truong-nhom.md).
+
 ## Dành cho agency
 
 1. Mở địa chỉ web nhà cung cấp gửi, làm theo thẻ **Bắt đầu sử dụng** ở tab đầu tiên.
