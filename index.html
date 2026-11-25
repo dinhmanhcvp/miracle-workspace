@@ -112,6 +112,14 @@
                         <div><label class="label-dark" for="brief-min-er">ER tối thiểu (%)</label><input type="text"
                                 inputmode="decimal" id="brief-min-er" class="input-dark brief-field"
                                 placeholder="Bỏ trống nếu không yêu cầu"></div>
+                        <div><label class="label-dark" for="brief-goal">Mục tiêu chiến dịch</label>
+                            <select id="brief-goal" class="input-dark brief-field">
+                                <option value="">Chưa xác định</option>
+                                <option value="awareness">Nhận diện / ra mắt</option>
+                                <option value="sales">Bán hàng (TikTok Shop / affiliate)</option>
+                                <option value="app">Tải app / chuyển đổi</option>
+                            </select>
+                        </div>
                         <div><label class="label-dark" for="brief-gender">Giới tính khán giả</label>
                             <select id="brief-gender" class="input-dark brief-field">
                                 <option value="">Không yêu cầu</option>
@@ -144,20 +152,43 @@
                             class="fas fa-magnifying-glass"></i> GỢI Ý KOC PHÙ HỢP</button>
                 </div>
 
-                <div class="card">
-                    <div class="flex flex-wrap gap-3 justify-between items-center mb-2">
-                        <h3 class="text-lg font-semibold text-white"><i
-                                class="fab fa-tiktok text-pink-400 mr-2"></i>Tìm thêm KOC trên TikTok</h3>
-                        <div class="flex gap-2">
-                            <button onclick="suggestSearchTerms(false)" class="btn-secondary text-xs">⚡ Tạo từ khóa</button>
-                            <button onclick="suggestSearchTerms(true)" id="btn-search-ai" class="btn-primary text-xs">✨ AI gợi ý</button>
+                <div class="card" id="hunt-card">
+                    <div class="flex flex-wrap gap-3 justify-between items-center mb-1">
+                        <h3 class="text-lg font-semibold text-white"><i class="fab fa-tiktok text-pink-400 mr-2"></i>Săn KOC mới trên TikTok</h3>
+                        <span id="hunt-progress" class="text-xs text-gray-400"></span>
+                    </div>
+                    <p id="hunt-mobile-note" class="hidden text-xs text-yellow-400 mb-2"><i class="fas fa-desktop mr-1"></i>Tính năng này dùng trên <b>máy tính</b> (TikTok web + bookmark), không dùng trên điện thoại.</p>
+                    <ol class="text-xs text-gray-400 space-y-1 mb-3 list-decimal pl-5">
+                        <li>Bấm <b>Lập kế hoạch</b>: tool tự đề xuất cần tìm gì (từ khóa video, hashtag, tài khoản) theo brief.</li>
+                        <li>Bấm <b>Mở TikTok</b> từng dòng (TikTok web trên máy tính, đã đăng nhập càng tốt).</li>
+                        <li>Trên trang kết quả, bấm bookmark <b class="text-purple-400">🪄 Phân tích KOC</b>: tool tự cuộn, gom <b>tất cả KOC trên trang</b> và chấm điểm vào danh sách Ứng viên bên dưới.
+                            <button onclick="openModal('bookmarklet')" class="underline hover:text-gray-200">Cài bookmark</button></li>
+                    </ol>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <button onclick="Hunt.makePlan(false)" class="btn-secondary text-xs">⚡ Lập kế hoạch</button>
+                        <button onclick="Hunt.makePlan(true)" id="btn-hunt-ai" class="btn-primary text-xs">✨ Lập kế hoạch bằng AI</button>
+                        <button onclick="Hunt.aiWebSearch()" id="btn-hunt-web" class="btn-secondary text-xs" title="Gemini + Google Search tìm kênh thật trên web (cần kiểm tra lại)">🌐 AI tìm KOC trên web</button>
+                    </div>
+                    <div id="hunt-plan" class="rounded-lg border border-gray-800 px-3 py-1"></div>
+                </div>
+
+                <div class="card hidden" id="hunt-prospects-card">
+                    <div class="flex flex-wrap gap-3 justify-between items-center mb-3">
+                        <h3 class="text-lg font-semibold text-white"><i class="fas fa-user-check text-green-400 mr-2"></i>Ứng viên từ TikTok (<span id="hunt-count">0</span> chưa xử lý)</h3>
+                        <div class="flex flex-wrap gap-2">
+                            <select id="hunt-filter" class="input-dark !w-40 !py-1 text-xs" onchange="Hunt.render()">
+                                <option value="new">Chưa xử lý</option>
+                                <option value="added">Đã thêm vào kho</option>
+                                <option value="skipped">Đã bỏ qua</option>
+                                <option value="all">Tất cả</option>
+                            </select>
+                            <button onclick="Hunt.aiScore()" id="btn-hunt-score" class="btn-primary text-xs">✨ AI chấm ứng viên</button>
+                            <button onclick="Hunt.addAll()" class="btn-success text-xs"><i class="fas fa-plus"></i> Thêm tất cả ≥ 60 điểm</button>
+                            <button onclick="Hunt.clear()" class="btn-secondary text-xs" title="Xóa danh sách ứng viên"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-500 mb-3">Mở các link tìm kiếm bên dưới, vào profile KOC trông phù hợp rồi bấm
-                        bookmark <b class="text-purple-400">🪄 Phân tích KOC</b>: tool tự đọc follower, view, caption, phụ đề,
-                        chấm điểm theo brief này và lưu vào Kho KOC.
-                        <button onclick="openModal('bookmarklet')" class="underline hover:text-gray-300">Cài bookmark</button></p>
-                    <div id="search-suggestions"></div>
+                    <p class="text-xs text-gray-500 mb-3">Điểm theo tiêu chí brief (và điểm AI nếu đã chấm). Ứng viên chưa có giá: sau khi thêm vào Kho KOC, mở kênh + bấm bookmark để phân tích sâu, nhắn xin giá như bình thường.</p>
+                    <div id="hunt-prospects" class="space-y-2"></div>
                 </div>
 
                 <div id="match-results" class="card hidden">
@@ -877,6 +908,7 @@ Ngày on-air: []</textarea>
             </div>
 
             <div class="space-y-4 text-gray-300 text-sm">
+                <p><b>Trên trang kết quả tìm kiếm / hashtag của TikTok</b> (máy tính): bấm 1 lần, tool tự cuộn và gom tất cả KOC trên trang vào danh sách Ứng viên, chấm điểm theo brief.</p>
                 <p>Đang xem <b>profile TikTok</b> của một KOC, bấm bookmark này: tool đọc tên, bio, follower, lượt xem và
                     caption các video đang hiện trên trang, phân tích (AI nếu có key) và chấm điểm theo brief, rồi cho bạn lưu
                     vào Kho KOC.</p>
@@ -1003,6 +1035,7 @@ Ngày on-air: []</textarea>
     <script src="assets/license.js"></script>
     <script src="assets/koc.js"></script>
     <script src="assets/grab.js"></script>
+    <script src="assets/hunt.js"></script>
     <script src="assets/sync.js"></script>
 </body>
 

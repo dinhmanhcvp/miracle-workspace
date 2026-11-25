@@ -272,3 +272,50 @@ test('rates are configurable per agency', () => {
   }
   assert.equal(Math.round(M.calcPnl({ A: 0, X: 900, taxType: 'PIT' }).F), 100);
 });
+
+test('brief goal is detected and favours selling KOCs for sales briefs', () => {
+  assert.equal(M.parseBriefText('Cần KOC bán hàng TikTok Shop, gắn giỏ hàng').goal, 'sales');
+  assert.equal(M.parseBriefText('Chiến dịch tải app ví điện tử').goal, 'app');
+  const brief = { categories: ['beauty'], goal: 'sales' };
+  const seller = M.scoreKoc(M.normalizeKoc({ name: 'S', categories: ['beauty'], shopRatio: 0.5 }), brief);
+  const nonSeller = M.scoreKoc(M.normalizeKoc({ name: 'N', categories: ['beauty'], shopRatio: 0 }), brief);
+  assert.ok(seller.score > nonSeller.score);
+  assert.ok(seller.reasons.some(r => /bán hàng/.test(r.text)));
+});
+
+test('summarizeGrab counts selling videos and unavailable video pages', () => {
+  const s = M.summarizeGrab({ source: 'tiktok', handle: 'x', videos: [{ desc: 'Mua ở giỏ hàng nhé', viewsText: '10K' }, { desc: 'vlog', viewsText: '5K', shop: true }, { desc: 'review', viewsText: '8K' }, { desc: 'test', viewsText: '1K' }] });
+  assert.equal(s.shopCount, 2);
+  assert.equal(s.shopRatio, 0.5);
+  assert.equal(M.summarizeGrab({ source: 'tiktok', handle: 'x', type: 'video', video: { unavailable: true } }).unavailable, true);
+});
+
+test('summarizeSearchGrab turns a search page into deduplicated candidates', () => {
+  const r = M.summarizeSearchGrab({ query: 'review skincare', creators: [
+    { handle: 'demo.one', name: 'Demo One', followersText: '120.5K', videos: [{ desc: 'Review serum cho da dầu #skincare', viewsText: '45K' }, { desc: 'Kem chống nắng #reviewmypham', viewsText: '30K', shop: true }] },
+    { handle: 'demo.one', name: 'dup' },
+    { handle: 'bad handle!', name: 'x' },
+    { handle: 'demo_two', videos: [{ desc: 'Vlog đi làm dân văn phòng', viewsText: '1.2M' }] },
+  ] });
+  assert.equal(r.query, 'review skincare');
+  assert.equal(r.candidates.length, 2);
+  const [a, b] = r.candidates;
+  assert.equal(a.id, 'tt:demo.one');
+  assert.equal(a.followers, 120500);
+  assert.equal(a.avgViews, 37500);
+  assert.ok(a.categories.includes('beauty'));
+  assert.equal(a.shopRatio, 0.5);
+  assert.equal(a.link, 'https://www.tiktok.com/@demo.one');
+  assert.ok(b.categories.includes('office'));
+});
+
+test('buildSearchPlan mixes video, hashtag and account searches with TikTok web URLs', () => {
+  const plan = M.buildSearchPlan({ categories: ['beauty', 'student'], product: 'serum vitamin C' });
+  assert.ok(plan.length >= 6);
+  assert.equal(plan[0].type, 'video');
+  assert.equal(plan[0].url, 'https://www.tiktok.com/search/video?q=review%20serum%20vitamin%20c');
+  assert.ok(plan.some(p => p.type === 'tag' && p.url.startsWith('https://www.tiktok.com/tag/')));
+  assert.ok(plan.some(p => p.type === 'user' && p.url.startsWith('https://www.tiktok.com/search/user?q=')));
+  assert.ok(plan.some(p => p.q === 'vlog sinh viên'), 'persona searched as lifestyle content');
+  assert.equal(new Set(plan.map(p => p.key)).size, plan.length);
+});

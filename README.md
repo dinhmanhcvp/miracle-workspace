@@ -10,7 +10,8 @@ Chạy hoàn toàn trên trình duyệt (HTML/CSS/JS tĩnh), không cần máy c
 |---|---|---|
 | Tìm KOC | **Brief & Gợi ý KOC** | Dán brief → tool đọc tiêu chí (Gemini hoặc bộ đọc từ khóa), chấm điểm 0–100 từng KOC kèm lý do, loại KOC blacklist / sai nền tảng / vượt ngân sách, tự chọn shortlist vừa ngân sách, copy gửi brand (ẩn giá nhập); gợi ý từ khóa & hashtag tìm KOC trên TikTok |
 | | **Kho KOC** | Nhập thẳng file `.xlsx` của agency (NB LIST, PRE PNL, Quotation) hoặc dán từ Sheets / CSV, có bảng chỉnh nhận diện cột; **Blacklist** (tên, link, dự án, lý do; khớp theo tên hoặc link) |
-| | Bookmarklet **🪄 Phân tích KOC** | Đang xem kênh/video TikTok, bấm 1 lần: đọc follower, view, caption, hashtag, phụ đề, AI nhận xét, chấm điểm theo brief, lưu vào Kho KOC |
+| | **Săn KOC mới trên TikTok** (máy tính) | Tool lập kế hoạch tìm kiếm theo brief (từ khóa video, hashtag, tài khoản); trên trang kết quả TikTok web bấm bookmarklet 1 lần → tự cuộn, gom **tất cả KOC trên trang**, nhận diện video gắn giỏ hàng, chấm điểm theo brief → danh sách Ứng viên; AI chấm hàng loạt; **AI tìm KOC trên web** (Gemini + Google Search, đánh dấu chưa xác minh) |
+| | Bookmarklet **🪄 Phân tích KOC** | Trên kênh/video TikTok: đọc follower, view, caption, hashtag, phụ đề, tỷ lệ video bán hàng; AI nhận xét; chấm theo brief; lưu Kho KOC. Video không xem được trên web (thường là video gắn giỏ) được nhận biết và hướng dẫn dùng trang profile |
 | Booking | Scouting & Xin giá | Check blacklist, chọn FOC, AI soạn tin xin giá (VI/EN) |
 | | Proceed Internal / External | PRE PNL đúng template: A B C D · X O E F G H M · K L; giá bán tự tính theo margin mục tiêu; copy PRE PNL / báo giá |
 | | Confirm Booking | AI soạn tin ép giá; mẫu tin xác nhận |
